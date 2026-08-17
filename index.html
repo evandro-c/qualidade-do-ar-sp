@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório Interativo de Qualidade do Ar - Estado de São Paulo</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <style>
+        :root {
+            --primary: #1B4F72;
+            --primary-light: #2874A6;
+            --secondary: #117864;
+            --secondary-light: #16A085;
+            --accent: #E67E22;
+            --danger: #C0392B;
+            --warning: #F39C12;
+            --info: #2980B9;
+            --dark: #1C2833;
+            --light: #F8F9FA;
+            --card-bg: #FFFFFF;
+            --border: #E2E8F0;
+            --text-main: #2D3748;
+            --text-muted: #718096;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #F1F5F9;
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        /* Header Styles */
+        .app-header {
+            background: linear-gradient(135deg, #0E3A5D 0%, #1B4F72 50%, #117864 100%);
+            color: white;
+            padding: 2.2rem 2rem 1.8rem;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header-title-box h1 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .header-title-box p {
+            font-size: 0.95rem;
+            opacity: 0.9;
+            margin-top: 0.25rem;
+            font-weight: 300;
+        }
+
+        .badge-tag {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs-container {
+            background: #FFFFFF;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 98px;
+            z-index: 999;
+        }
+
+        .nav-tabs {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            overflow-x: auto;
+            padding: 0 1.5rem;
+            gap: 0.5rem;
+            scrollbar-width: thin;
+        }
+
+        .nav-tab {
+            padding: 0.9rem 1.25rem;
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-tab:hover {
+            color: var(--primary);
+            background-color: #F8FAFC;
+        }
+
+        .nav-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1400px;
+            margin: 1.8rem auto;
+            padding: 0 1.5rem 3rem;
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Card Containers */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-subtitle {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .kpi-card {
+            background: white;
+            padding: 1.25rem;
+            border-radius: 12px;
+            border-left: 5px solid var(--primary);
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: transform 0.2s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .kpi-card.green { border-left-color: var(--secondary); }
+        .kpi-card.orange { border-left-color: var(--accent); }
+        .kpi-card.blue { border-left-color: var(--info); }
+
+        .kpi-info h4 {
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .kpi-info .kpi-value {
+            font-size: 1.7rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin: 0.25rem 0;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .kpi-info p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .kpi-icon {
+            font-size: 2.2rem;
+            opacity: 0.85;
+        }
+
+        /* Filter Controls */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            background: #F8FAFC;
+            padding: 0.85rem 1.2rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        select, input[type="text"] {
+            padding: 0.5rem 0.85rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            background-color: white;
+            color: var(--text-main);
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(27, 79, 114, 0.15);
+        }
+
+        /* Map Container */
+        #map {
+            height: 620px;
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        .map-legend {
+            background: white;
+            padding: 10px 14px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .map-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Popup Customization */
+        .leaflet-popup-content-wrapper {
+            border-radius: 10px;
+            box-shadow: var(--shadow-lg);
+            padding: 4px;
+        }
+
+        .popup-card {
+            min-width: 250px;
+            font-size: 0.88rem;
+        }
+
+        .popup-header {
+            background: var(--primary);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px 6px 0 0;
+            margin: -4px -4px 8px -4px;
+        }
+
+        .popup-header h3 {
+            font-size: 0.98rem;
+            font-weight: 700;
+        }
+
+        .popup-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.25);
+            font-size: 0.72rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .popup-stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #EDF2F7;
+        }
+
+        .popup-stat-label {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+
+        .popup-stat-val {
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .popup-highlight {
+            background: #EBF5FB;
+            color: var(--primary);
+            padding: 6px 8px;
+            border-radius: 6px;
+            margin: 8px 0;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Tables */
+        .data-table-container {
+            overflow-x: auto;
+            max-height: 580px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.86rem;
+            text-align: left;
+        }
+
+        table.data-table th {
+            background-color: #F8FAFC;
+            color: var(--primary);
+            font-weight: 700;
+            padding: 0.75rem 1rem;
+            border-bottom: 2px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        table.data-table th:hover {
+            background-color: #EDF2F7;
+        }
+
+        table.data-table td {
+            padding: 0.65rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        table.data-table tbody tr:hover {
+            background-color: #F1F5F9;
+        }
+
+        table.data-table tbody tr:nth-child(even) {
+            background-color: #FAFAFA;
+        }
+
+        /* Alert / Callout Boxes */
+        .callout {
+            background: #EFF6FF;
+            border-left: 4px solid var(--primary-light);
+            padding: 1rem 1.25rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        .callout.warning {
+            background: #FFFBEB;
+            border-left-color: var(--warning);
+        }
+
+        .callout.danger {
+            background: #FEF2F2;
+            border-left-color: var(--danger);
+        }
+
+        .callout.success {
+            background: #ECFDF5;
+            border-left-color: var(--secondary);
+        }
+
+        .callout-title {
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        /* Grid 2 Columns */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(550px, 1fr));
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .nav-tabs-container {
+                top: 140px;
+            }
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-light);
+        }
+
+        .btn-outline {
+            background-color: white;
+            border-color: #CBD5E1;
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            background-color: #F8FAFC;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="header-title-box">
+                <span class="badge-tag">Pós IA & Meio Ambiente • Relatório Analítico</span>
+                <h1>🌿 Diagnóstico e Monitoramento da Qualidade do Ar em São Paulo</h1>
+                <p>Análise Exploratória e Geoespacial Integrada da Rede CETESB (Série Histórica 2015 – 2021)</p>
+            </div>
+            <div>
+                <button class="btn btn-outline" onclick="window.print()" style="background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.3);">
+                    🖨️ Imprimir / Salvar PDF
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs-container">
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('overview')">📊 Visão Geral & KPIs</button>
+            <button class="nav-tab" onclick="switchTab('map-tab')">🗺️ Mapa Geoespacial Interativo</button>
+            <button class="nav-tab" onclick="switchTab('timeseries')">📈 Séries Temporais & Tendências</button>
+            <button class="nav-tab" onclick="switchTab('cycles')">⏱️ Ciclos Diurnos & Sazonalidade</button>
+            <button class="nav-tab" onclick="switchTab('hotspots')">🚨 Hotspots & Padrões Ambientais</button>
+            <button class="nav-tab" onclick="switchTab('stations-table')">📋 Tabela Completa de Estações</button>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="main-container">
+
+        <!-- TAB 1: VISÃO GERAL & KPIS -->
+        <section id="overview" class="tab-panel active">
+            
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-info">
+                        <h4>Total de Medições</h4>
+                        <div class="kpi-value">10.980.515</div>
+                        <p>Registros horários e diários</p>
+                    </div>
+                    <div class="kpi-icon">📊</div>
+                </div>
+                <div class="kpi-card green">
+                    <div class="kpi-info">
+                        <h4>Estações de Monitoramento</h4>
+                        <div class="kpi-value">87</div>
+                        <p>Redes Automática e Manual</p>
+                    </div>
+                    <div class="kpi-icon">📍</div>
+                </div>
+                <div class="kpi-card orange">
+                    <div class="kpi-info">
+                        <h4>Período Histórico</h4>
+                        <div class="kpi-value">2015 – 2021</div>
+                        <p>7 anos contínuos analisados</p>
+                    </div>
+                    <div class="kpi-icon">📅</div>
+                </div>
+                <div class="kpi-card blue">
+                    <div class="kpi-info">
+                        <h4>Poluentes Monitorados</h4>
+                        <div class="kpi-value">9</div>
+                        <p>MP10, MP2.5, NO2, O3, CO, SO2...</p>
+                    </div>
+                    <div class="kpi-icon">💨</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">📋 Resumo Estatístico Consolidado por Poluente</h2>
+                        <p class="card-subtitle">Estatísticas descritivas calculadas sobre a totalidade das medições no Estado de São Paulo</p>
+                    </div>
+                </div>
+                <div class="data-table-container">
+                    <table class="data-table" id="summaryTable">
+                        <thead>
+                            <tr>
+                                <th>Poluente</th>
+                                <th>Descrição do Parâmetro</th>
+                                <th>Unidade</th>
+                                <th>Total de Medições</th>
+                                <th>Média Geral (&mu;)</th>
+                                <th>Desvio Padrão (&sigma;)</th>
+                                <th>Mínimo</th>
+                                <th>Máximo</th>
+                                <th>Padrão Anual CONAMA</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summaryTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">🔍 Principais Achados da Análise Exploratória (EDA)</h2>
+                    </div>
+                    <div class="callout success">
+                        <div class="callout-title">📉 Tendência Decrescente de Poluentes Primários</div>
+                        Entre 2015 e 2021, observou-se uma redução contínua nas médias estaduais de <strong>CO</strong> (-32%), <strong>SO₂</strong> (-44%) e <strong>NO₂</strong> (-20%), refletindo a evolução dos padrões PROCONVE da frota veicular e a redução transitória de circulação durante a pandemia (2020-2021).
+                    </div>
+                    <div class="callout warning">
+                        <div class="callout-title">☀️ Persistência Crítica do Ozônio Troposférico (O₃)</div>
+                        Ao contrário dos poluentes primários, o <strong>Ozônio (O₃)</strong> apresentou tendência ligeiramente ascendente (de 37,7 µg/m³ para 41,7 µg/m³), sendo o poluente que mais frequentemente ultrapassa os padrões de qualidade do ar no interior do estado e em áreas elevadas (ex: Pico do Jaraguá).
+                    </div>
+                    <div class="callout danger">
+                        <div class="callout-title">❄️ Impacto Severo da Estiagem e Inversão Térmica de Inverno</div>
+                        Nos meses de <strong>junho a setembro</strong>, a concentração de material particulado (MP10 e MP2.5) <strong>dobra</strong> em comparação ao verão chuvoso, devido à estabilidade atmosférica e à ausência de chuvas para lavagem atmosférica (wet scavenging).
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">🏭 Tipologia Espacial dos Hotspots Ambientais</h2>
+                    </div>
+                    <ul style="padding-left: 1.2rem; font-size: 0.92rem; line-height: 1.8;">
+                        <li><strong>Polo Industrial Pesado & Particulados:</strong> <em>Cubatão - Vila Parisi</em> lidera a média histórica estadual de MP10 (73,0 µg/m³) e SO₂ (10,7 µg/m³). No interior, <em>Santa Gertrudes</em> (52,7 µg/m³) e <em>Rio Claro</em> sofrem com a poeira mineral gerada pela queima e mineração do polo de revestimentos cerâmicos.</li>
+                        <li><strong>Corredores de Tráfego Intenso:</strong> Estações adjacentes a rodovias e avenidas expressas como <em>Marginal Tietê - Pte dos Remédios</em>, <em>Congonhas</em> e <em>Osasco</em> apresentam os maiores índices de NO₂ e Monóxido de Carbono (CO).</li>
+                        <li><strong>Complexo Petroquímico e Portuário:</strong> <em>Paulínia (Sul/Centro)</em> e <em>Santos (Ponta da Praia)</em> exibem picos característicos de compostos de enxofre e óxidos de nitrogênio.</li>
+                    </ul>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- TAB 2: MAPA GEOESPACIAL INTERATIVO -->
+        <section id="map-tab" class="tab-panel">
+            
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">🗺️ Distribuição Espacial das 87 Estações de Monitoramento</h2>
+                        <p class="card-subtitle">Coordenadas geográficas oficiais CETESB (SIRGAS 2000) cruzadas com métricas históricas</p>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label for="mapPollutantSelect">Poluente Selecionado:</label>
+                        <select id="mapPollutantSelect" onchange="updateMapMarkers()">
+                            <option value="MP10" selected>MP10 - Material Particulado Inalável</option>
+                            <option value="MP2.5">MP2.5 - Material Particulado Fino</option>
+                            <option value="NO2">NO2 - Dióxido de Nitrogênio</option>
+                            <option value="O3">O3 - Ozônio</option>
+                            <option value="CO">CO - Monóxido de Carbono</option>
+                            <option value="SO2">SO2 - Dióxido de Enxofre</option>
+                            <option value="NO">NO - Monóxido de Nitrogênio</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="mapNetworkSelect">Tipo de Rede:</label>
+                        <select id="mapNetworkSelect" onchange="updateMapMarkers()">
+                            <option value="TODAS" selected>Todas as Redes</option>
+                            <option value="Automatica">Rede Automática</option>
+                            <option value="Manual">Rede Manual</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="mapUgrhiSelect">Região / UGRHI:</label>
+                        <select id="mapUgrhiSelect" onchange="updateMapMarkers()">
+                            <option value="TODAS" selected>Todas as Regiões</option>
+                            <option value="6">UGRHI 6 - Alto Tietê (RMSP)</option>
+                            <option value="7">UGRHI 7 - Baixada Santista</option>
+                            <option value="5">UGRHI 5 - PCJ (Campinas/Piracicaba)</option>
+                            <option value="2">UGRHI 2 - Paraíba do Sul</option>
+                            <option value="INTERIOR">Outras UGRHIs do Interior</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="map"></div>
+            </div>
+
+        </section>
+
+        <!-- TAB 3: SÉRIES TEMPORAIS & TENDÊNCIAS -->
+        <section id="timeseries" class="tab-panel">
+            
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">📈 Evolução das Médias Anuais (2015 a 2021)</h2>
+                        <p class="card-subtitle">Acompanhe a trajetória histórica de cada parâmetro no Estado</p>
+                    </div>
+                    <div class="filter-group">
+                        <label for="trendPollutantSelect">Selecione o Poluente:</label>
+                        <select id="trendPollutantSelect" onchange="renderAnnualTrendChart()">
+                            <option value="MP10" selected>MP10</option>
+                            <option value="MP2.5">MP2.5</option>
+                            <option value="NO2">NO2</option>
+                            <option value="O3">O3</option>
+                            <option value="CO">CO</option>
+                            <option value="SO2">SO2</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="annualTrendPlot" style="height: 420px; width: 100%;"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">🏙️ Comparativo Regional de Tendências (RMSP vs Baixada vs Interior)</h2>
+                        <p class="card-subtitle">Diferenças no comportamento da poluição entre macrorregiões paulistas</p>
+                    </div>
+                </div>
+                <div id="regionalTrendPlot" style="height: 440px; width: 100%;"></div>
+            </div>
+
+        </section>
+
+        <!-- TAB 4: CICLOS HORÁRIOS & SAZONALIDADE -->
+        <section id="cycles" class="tab-panel">
+            
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">⏱️ Ciclo Diurno (Média por Hora do Dia: 00h às 23h)</h2>
+                            <p class="card-subtitle">Picos de tráfego veicular vs radiação solar fotoquímica</p>
+                        </div>
+                    </div>
+                    <div id="diurnalPlot" style="height: 420px; width: 100%;"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">📅 Sazonalidade Mensal (Janeiro a Dezembro)</h2>
+                            <p class="card-subtitle">Efeito crítico do inverno seco e inversões térmicas</p>
+                        </div>
+                    </div>
+                    <div id="seasonalPlot" style="height: 420px; width: 100%;"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🔬 Interpretação dos Mecanismos Físico-Químicos e Meteorológicos</h2>
+                </div>
+                <div style="font-size: 0.92rem; line-height: 1.8;">
+                    <p><strong>1. Dinâmica Bimodal dos Poluentes Veiculares (CO, NO₂, NO):</strong> As emissões primárias de escapamento apresentam dois picos diários muito nítidos: entre <strong>07h e 09h</strong> (início das atividades urbanas e deslocamentos matinais) e entre <strong>18h e 22h</strong> (pico da tarde associado ao resfriamento da superfície, que reduz a altura da Camada Limite Planetária e confina os gases junto ao solo).</p>
+                    <p style="margin-top: 0.75rem;"><strong>2. Ciclo Fotoquímico Unimodal do Ozônio (O₃):</strong> O ozônio atinge concentrações mínimas na madrugada (~16-24 µg/m³) devido ao consumo de ozônio pelo NO recém-emitido. A partir das 09h, a intensa radiação ultravioleta solar promove a fotólise do NO₂, gerando o pico máximo absoluto de ozônio entre <strong>13h e 16h</strong> (médias de 74 a 75 µg/m³).</p>
+                    <p style="margin-top: 0.75rem;"><strong>3. Sazonalidade de Particulados (MP10 / MP2.5):</strong> As concentrações sobem de cerca de 20 µg/m³ no verão chuvoso para mais de <strong>41,5 µg/m³ em julho</strong>. As inversões térmicas em baixas altitudes criam uma barreira sobre as bacias aéreas de São Paulo, Campinas e do Vale do Paraíba, impedindo a convecção vertical.</p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- TAB 5: HOTSPOTS & PADRÕES AMBIENTAIS -->
+        <section id="hotspots" class="tab-panel">
+            
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">🚨 Ranking das Top 10 Estações Mais Críticas por Poluente</h2>
+                        <p class="card-subtitle">Média Histórica acompanhada do Desvio Padrão (barras de erro &plusmn; &sigma;)</p>
+                    </div>
+                    <div class="filter-group">
+                        <label for="hotspotPollutantSelect">Selecione o Poluente:</label>
+                        <select id="hotspotPollutantSelect" onchange="renderHotspotChart()">
+                            <option value="MP10" selected>MP10 - Material Particulado Inalável</option>
+                            <option value="MP2.5">MP2.5 - Material Particulado Fino</option>
+                            <option value="NO2">NO2 - Dióxido de Nitrogênio</option>
+                            <option value="O3">O3 - Ozônio</option>
+                            <option value="CO">CO - Monóxido de Carbono</option>
+                            <option value="SO2">SO2 - Dióxido de Enxofre</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="hotspotPlot" style="height: 480px; width: 100%;"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📜 Padrões Nacionais de Qualidade do Ar (Resolução CONAMA nº 491/2018)</h2>
+                </div>
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Poluente</th>
+                                <th>Tempo de Amostragem</th>
+                                <th>Padrão Final (PF - Meta OMS)</th>
+                                <th>Padrão Intermediário 1 (PI-1)</th>
+                                <th>Efeitos Principais na Saúde</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>MP10</strong></td>
+                                <td>Anual / 24 horas</td>
+                                <td>20 µg/m³ / 45 µg/m³</td>
+                                <td>40 µg/m³ / 120 µg/m³</td>
+                                <td>Problemas respiratórios superiores, agravamento de asma e bronquite.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MP2.5</strong></td>
+                                <td>Anual / 24 horas</td>
+                                <td>10 µg/m³ / 25 µg/m³</td>
+                                <td>20 µg/m³ / 60 µg/m³</td>
+                                <td>Penetração profunda nos alvéolos pulmonares, doenças cardiovasculares e câncer de pulmão.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>NO2</strong></td>
+                                <td>Anual / 1 hora</td>
+                                <td>40 µg/m³ / 190 µg/m³</td>
+                                <td>60 µg/m³ / 260 µg/m³</td>
+                                <td>Irritação severa das vias aéreas, inflamação pulmonar crônica e aumento da reatividade brônquica.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>O3</strong></td>
+                                <td>8 horas móveis</td>
+                                <td>100 µg/m³</td>
+                                <td>140 µg/m³</td>
+                                <td>Poderoso oxidante; redução da função pulmonar, ardência ocular e danos na vegetação.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CO</strong></td>
+                                <td>8 horas móveis</td>
+                                <td>9.000 µg/m³ (9 ppm)</td>
+                                <td>9.000 µg/m³ (9 ppm)</td>
+                                <td>Formação de carboxiemoglobina (COHb), privação de oxigenação tecidual e riscos cardíacos.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SO2</strong></td>
+                                <td>24 horas / 1 hora</td>
+                                <td>20 µg/m³ / 40 µg/m³</td>
+                                <td>40 µg/m³ / 125 µg/m³</td>
+                                <td>Broncoconstrição, irritação traqueal e formação de chuva ácida (ácido sulfúrico).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- TAB 6: TABELA COMPLETA DE ESTAÇÕES -->
+        <section id="stations-table" class="tab-panel">
+            
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">📋 Tabela Analítica Completa das 87 Estações</h2>
+                        <p class="card-subtitle">Busca instantânea, ordenação por colunas e visualização da Média e Desvio Padrão (&sigma;)</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="exportTableToCSV()">📥 Exportar para CSV</button>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label for="tableSearchInput">🔍 Buscar Estação / Cidade:</label>
+                        <input type="text" id="tableSearchInput" placeholder="Digite nome, município, código..." onkeyup="filterStationsTable()">
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="tablePolSelect">Poluente em Exibição:</label>
+                        <select id="tablePolSelect" onchange="renderStationsTable()">
+                            <option value="MP10" selected>MP10 (µg/m³)</option>
+                            <option value="MP2.5">MP2.5 (µg/m³)</option>
+                            <option value="NO2">NO2 (µg/m³)</option>
+                            <option value="O3">O3 (µg/m³)</option>
+                            <option value="CO">CO (µg/m³)</option>
+                            <option value="SO2">SO2 (µg/m³)</option>
+                            <option value="NO">NO (µg/m³)</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="tableUgrhiFilter">UGRHI:</label>
+                        <select id="tableUgrhiFilter" onchange="filterStationsTable()">
+                            <option value="ALL" selected>Todas as UGRHIs</option>
+                            <option value="6">UGRHI 6 (Alto Tietê - RMSP)</option>
+                            <option value="7">UGRHI 7 (Baixada Santista)</option>
+                            <option value="5">UGRHI 5 (PCJ)</option>
+                            <option value="2">UGRHI 2 (Paraíba do Sul)</option>
+                            <option value="OTHER">Demais UGRHIs</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="tableTypeFilter">Rede:</label>
+                        <select id="tableTypeFilter" onchange="filterStationsTable()">
+                            <option value="ALL" selected>Todas as Redes</option>
+                            <option value="Automatica">Automática</option>
+                            <option value="Manual">Manual</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="data-table-container">
+                    <table class="data-table" id="fullStationsTable">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTable(0)">Código ⬍</th>
+                                <th onclick="sortTable(1)">Nome da Estação ⬍</th>
+                                <th onclick="sortTable(2)">Município ⬍</th>
+                                <th onclick="sortTable(3)">UGRHI ⬍</th>
+                                <th onclick="sortTable(4)">Tipo de Rede ⬍</th>
+                                <th onclick="sortTable(5)">Média Histórica (&mu;) ⬍</th>
+                                <th onclick="sortTable(6)">Desvio Padrão (&sigma;) ⬍</th>
+                                <th onclick="sortTable(7)">Máximo Histórico ⬍</th>
+                                <th onclick="sortTable(8)">Total Medições ⬍</th>
+                                <th>Latitude</th>
+                                <th>Longitude</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullStationsTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p><strong>Relatório Técnico Interativo de Qualidade do Ar - Estado de São Paulo</strong></p>
+        <p>Dados Primários: CETESB (Companhia Ambiental do Estado de São Paulo) • Série Histórica 2015–2021</p>
+        <p>Referência Cartográfica: SIRGAS 2000 / WGS 84 • Resolução CONAMA nº 491/2018</p>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const reportData = {"total_registros": 10980515, "total_estacoes": 87, "periodo": "2015 a 2021", "data_min": "2015-01-01", "data_max": "2021-12-31", "conama_standards": {"MP10": {"standard_annual": 40.0, "standard_24h": 120.0, "unit": "µg/m³", "desc": "Material Particulado Inalável (≤ 10 µm)"}, "MP2.5": {"standard_annual": 20.0, "standard_24h": 60.0, "unit": "µg/m³", "desc": "Material Particulado Fino (≤ 2.5 µm)"}, "NO2": {"standard_annual": 40.0, "standard_1h": 260.0, "unit": "µg/m³", "desc": "Dióxido de Nitrogênio"}, "O3": {"standard_8h": 140.0, "standard_1h": 180.0, "unit": "µg/m³", "desc": "Ozônio"}, "CO": {"standard_8h": 9000.0, "unit": "µg/m³", "desc": "Monóxido de Carbono (9 ppm ≈ 10.000 µg/m³)"}, "SO2": {"standard_annual": 20.0, "standard_24h": 40.0, "unit": "µg/m³", "desc": "Dióxido de Enxofre"}, "NO": {"unit": "µg/m³", "desc": "Monóxido de Nitrogênio"}, "FMC": {"unit": "µg/m³", "desc": "Fumaça (amostragem manual)"}, "PTS": {"standard_annual": 80.0, "standard_24h": 240.0, "unit": "µg/m³", "desc": "Partículas Totais em Suspensão"}}, "pol_summary": [{"poluente": "MP10", "descricao": "Material Particulado Inalável (≤ 10 µm)", "unidade": "µg/m³", "total_registros": 2883216, "media": 29.21, "desvio_padrao": 25.96, "min": 0.0, "max": 1924.0}, {"poluente": "O3", "descricao": "Ozônio", "unidade": "µg/m³", "total_registros": 2647308, "media": 39.88, "desvio_padrao": 30.85, "min": 0.0, "max": 767.0}, {"poluente": "NO2", "descricao": "Dióxido de Nitrogênio", "unidade": "µg/m³", "total_registros": 2176814, "media": 25.68, "desvio_padrao": 21.49, "min": 0.0, "max": 278.0}, {"poluente": "MP2.5", "descricao": "Material Particulado Fino (≤ 2.5 µm)", "unidade": "µg/m³", "total_registros": 1224587, "media": 15.76, "desvio_padrao": 13.7, "min": 0.0, "max": 920.0}, {"poluente": "CO", "descricao": "Monóxido de Carbono (9 ppm ≈ 10.000 µg/m³)", "unidade": "µg/m³", "total_registros": 899056, "media": 712.78, "desvio_padrao": 568.79, "min": 0.0, "max": 9981.29}, {"poluente": "SO2", "descricao": "Dióxido de Enxofre", "unidade": "µg/m³", "total_registros": 796305, "media": 4.44, "desvio_padrao": 18.19, "min": 0.0, "max": 9645.0}, {"poluente": "NO", "descricao": "Monóxido de Nitrogênio", "unidade": "µg/m³", "total_registros": 347840, "media": 15.1, "desvio_padrao": 34.16, "min": 0.0, "max": 768.0}, {"poluente": "FMC", "descricao": "Fumaça (amostragem manual)", "unidade": "µg/m³", "total_registros": 3679, "media": 16.41, "desvio_padrao": 13.77, "min": 1.0, "max": 159.0}, {"poluente": "PTS", "descricao": "Partículas Totais em Suspensão", "unidade": "µg/m³", "total_registros": 1710, "media": 72.62, "desvio_padrao": 73.7, "min": 4.0, "max": 708.0}], "stations": [{"codigo": "SP137", "nome": "Americana", "nome_cetesb": "Americana", "tipo": "Automatica", "ugrhi": "5", "municipio": "Americana", "endereco": "Rua Tailândia, 364, Parque das Nações - Americana", "lat": -22.724507, "lon": -47.347456, "fuso": "23K", "utm_x": 258896, "utm_y": 7485068, "obs": "Início da operação: 26/02/2018", "pollutants": {"MP10": {"count": 28672, "mean": 33.77, "std": 27.12, "min": 0.0, "max": 373.0}, "O3": {"count": 27906, "mean": 53.33, "std": 33.46, "min": 4.0, "max": 203.0}}}, {"codigo": "SP01", "nome": "Americana - Vila Santa Maria", "nome_cetesb": "Americana - Santa Maria", "tipo": "Automatica", "ugrhi": "5", "municipio": "Americana", "endereco": "Rua Suécia, 465, esquina com Av. Europa, Vila Santa Maria - Americana", "lat": -22.724253, "lon": -47.339549, "fuso": "23K", "utm_x": 259708, "utm_y": 7485109, "obs": "Estação desativada. Monitoramento de 19/05/2008 a 22/02/2018, como Americana", "pollutants": {"MP10": {"count": 24841, "mean": 34.46, "std": 26.85, "min": 0.0, "max": 372.0}, "O3": {"count": 24479, "mean": 37.59, "std": 31.77, "min": 0.0, "max": 180.0}}}, {"codigo": "SP03", "nome": "Araraquara", "nome_cetesb": "Araraquara", "tipo": "Automatica", "ugrhi": "13", "municipio": "Araraquara", "endereco": "Av. Angelo Hortence, 1990, Centro - Araraquara (Ginásio da Pista Guilherme Fragoso Ferrão / Centro Esportivo Domingos Sávio)", "lat": -21.782522, "lon": -48.185832, "fuso": "22K", "utm_x": 791007, "utm_y": 7588591, "obs": "Início da operação: 11/07/2008", "pollutants": {"MP10": {"count": 59511, "mean": 27.86, "std": 22.88, "min": 0.0, "max": 679.0}, "NO": {"count": 8061, "mean": 2.01, "std": 6.64, "min": 0.0, "max": 133.0}, "NO2": {"count": 54646, "mean": 17.27, "std": 17.31, "min": 0.0, "max": 183.0}, "O3": {"count": 54607, "mean": 49.9, "std": 29.31, "min": 0.0, "max": 184.0}}}, {"codigo": "SP02", "nome": "Araçatuba", "nome_cetesb": "Araçatuba", "tipo": "Automatica", "ugrhi": "19", "municipio": "Araçatuba", "endereco": "Rua Clovis Pestana, 801A, Jd. Dona Amélia - Araçatuba (UNESP - Campus da Veterinária)", "lat": -21.186841, "lon": -50.439317, "fuso": "22K", "utm_x": 558199, "utm_y": 7657071, "obs": "Início da operação: 20/08/2008", "pollutants": {"MP10": {"count": 60414, "mean": 27.83, "std": 21.88, "min": 0.0, "max": 611.0}, "O3": {"count": 51025, "mean": 44.96, "std": 24.73, "min": 0.0, "max": 156.0}}}, {"codigo": "SP05", "nome": "Barretos - América", "nome_cetesb": "Barretos - América", "tipo": "Manual", "ugrhi": "12", "municipio": "Barretos", "endereco": "Rua Bolívia, 2255, Vl. América - Barretos (Agência Ambiental de Barretos)", "lat": -20.572481, "lon": -48.574178, "fuso": "22K", "utm_x": 752881, "utm_y": 7723284, "obs": "Início: 01/09/2014; Desativada: 31/12/2018", "pollutants": {"MP10": {"count": 74, "mean": 38.05, "std": 19.82, "min": 3.0, "max": 85.0}}}, {"codigo": "SP06", "nome": "Bauru", "nome_cetesb": "Bauru", "tipo": "Automatica", "ugrhi": "13", "municipio": "Bauru", "endereco": "Rua Castro Alves s/nº, Q4, Vila Souto - Bauru (12º Grupamento de Bombeiros)", "lat": -22.326608, "lon": -49.092759, "fuso": "22K", "utm_x": 696439, "utm_y": 7529779, "obs": "Início da operação: 09/05/2008", "pollutants": {"MP10": {"count": 56608, "mean": 26.1, "std": 20.73, "min": 0.0, "max": 443.0}, "NO": {"count": 6801, "mean": 3.79, "std": 11.77, "min": 0.0, "max": 237.0}, "NO2": {"count": 55553, "mean": 15.96, "std": 15.58, "min": 0.0, "max": 133.0}, "O3": {"count": 57622, "mean": 41.38, "std": 26.95, "min": 0.0, "max": 176.0}}}, {"codigo": "SP07", "nome": "Campinas - Centro", "nome_cetesb": "Campinas - Centro", "tipo": "Automatica", "ugrhi": "5", "municipio": "Campinas", "endereco": "Av. Anchieta, 42, Centro - Campinas (Escola Estadual Carlos Gomes)", "lat": -22.902525, "lon": -47.057211, "fuso": "23K", "utm_x": 288991, "utm_y": 7465796, "obs": "Início de operação: 02/02/2000; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 53073, "mean": 818.5, "std": 373.35, "min": 0.0, "max": 7236.44}, "MP10": {"count": 55924, "mean": 26.17, "std": 15.11, "min": 0.0, "max": 169.0}}}, {"codigo": "SP08", "nome": "Campinas - Taquaral", "nome_cetesb": "Campinas - Taquaral", "tipo": "Automatica", "ugrhi": "5", "municipio": "Campinas", "endereco": "Av. Dr. Heitor Penteado, s/nº - Portão 5, Parque Taquaral - Campinas", "lat": -22.874619, "lon": -47.058973, "fuso": "23K", "utm_x": 288767, "utm_y": 7468884, "obs": "Início da operação: 29/05/2015", "pollutants": {"MP10": {"count": 53947, "mean": 21.45, "std": 15.95, "min": 0.0, "max": 238.0}, "NO": {"count": 8262, "mean": 3.01, "std": 10.14, "min": 0.0, "max": 136.0}, "NO2": {"count": 51742, "mean": 15.9, "std": 16.77, "min": 0.0, "max": 162.0}, "O3": {"count": 53892, "mean": 49.09, "std": 33.78, "min": 0.0, "max": 231.0}}}, {"codigo": "SP09", "nome": "Campinas - Vila União", "nome_cetesb": "Campinas - Vila União", "tipo": "Automatica", "ugrhi": "5", "municipio": "Campinas", "endereco": "Rua Conselho das Sociedades de Bairro, 620, Jd. Yeda - Campinas (CEI Caic Prof. Zeferino Vaz)", "lat": -22.946728, "lon": -47.119281, "fuso": "23K", "utm_x": 282693, "utm_y": 7460810, "obs": "Início da operação: 03/02/2015", "pollutants": {"MP2.5": {"count": 49569, "mean": 16.84, "std": 13.34, "min": 0.0, "max": 169.0}, "NO": {"count": 6440, "mean": 5.48, "std": 12.91, "min": 0.0, "max": 177.0}, "NO2": {"count": 28868, "mean": 21.26, "std": 17.17, "min": 0.0, "max": 146.0}, "O3": {"count": 51966, "mean": 43.08, "std": 28.01, "min": 0.0, "max": 196.0}}}, {"codigo": "SP10", "nome": "Campos Elíseos", "nome_cetesb": "Campos Elíseos", "tipo": "Manual", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Av. Rio Branco, 1210, Campos Elíseos - São Paulo (UNESP - 'Julio de Mesquita Filho')", "lat": -23.53319, "lon": -46.644603, "fuso": "23K", "utm_x": 332112, "utm_y": 7396492, "obs": "Início da operação: 01/01/1989", "pollutants": {"FMC": {"count": 349, "mean": 21.37, "std": 15.51, "min": 2.0, "max": 122.0}, "SO2": {"count": 65, "mean": 3.11, "std": 0.66, "min": 3.0, "max": 8.0}}}, {"codigo": "SP11", "nome": "Capão Redondo", "nome_cetesb": "Capão Redondo", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Estrada de Itapecerica, 5859, Capão Redondo - São Paulo (Campus UNASP)", "lat": -23.668356, "lon": -46.780043, "fuso": "23K", "utm_x": 318469, "utm_y": 7381358, "obs": "Início da operação: 01/09/2012", "pollutants": {"MP10": {"count": 56832, "mean": 24.55, "std": 20.78, "min": 0.0, "max": 293.0}, "NO": {"count": 7423, "mean": 9.78, "std": 24.57, "min": 0.0, "max": 285.0}, "NO2": {"count": 31440, "mean": 27.73, "std": 18.91, "min": 0.0, "max": 164.0}, "O3": {"count": 48917, "mean": 37.07, "std": 30.03, "min": 0.0, "max": 313.0}}}, {"codigo": "SP12", "nome": "Carapicuíba", "nome_cetesb": "Carapicuíba", "tipo": "Automatica", "ugrhi": "6", "municipio": "Carapicuíba", "endereco": "Av. Inocêncio Seráfico, esq. com Rua São Miguel, Carapicuíba (Reservatório da SABESP)", "lat": -23.531395, "lon": -46.83578, "fuso": "23K", "utm_x": 312589, "utm_y": 7396454, "obs": "Início da operação: 27/02/2012", "pollutants": {"CO": {"count": 50747, "mean": 586.82, "std": 398.13, "min": 0.0, "max": 4242.05}, "MP10": {"count": 56583, "mean": 27.55, "std": 22.41, "min": 0.0, "max": 266.0}, "NO": {"count": 8071, "mean": 14.19, "std": 23.05, "min": 0.0, "max": 241.0}, "NO2": {"count": 31508, "mean": 33.43, "std": 18.59, "min": 1.0, "max": 190.0}, "O3": {"count": 56340, "mean": 35.7, "std": 30.59, "min": 0.0, "max": 298.0}}}, {"codigo": "SP13", "nome": "Catanduva", "nome_cetesb": "Catanduva", "tipo": "Automatica", "ugrhi": "15", "municipio": "Catanduva", "endereco": "Rua Fortaleza, 1310, Vila Rodrigues - Catanduva (Reservatório Santo Antônio - Caixa D'Água)", "lat": -21.141943, "lon": -48.983075, "fuso": "22K", "utm_x": 709450, "utm_y": 7660813, "obs": "Início da operação: 15/04/2009", "pollutants": {"MP10": {"count": 58975, "mean": 34.5, "std": 28.0, "min": 0.0, "max": 555.0}, "NO": {"count": 8343, "mean": 3.06, "std": 6.72, "min": 0.0, "max": 95.0}, "NO2": {"count": 56189, "mean": 15.24, "std": 13.4, "min": 0.0, "max": 109.0}, "O3": {"count": 57812, "mean": 42.82, "std": 27.53, "min": 0.0, "max": 195.0}}}, {"codigo": "SP14", "nome": "Cerqueira César", "nome_cetesb": "Cerqueira César", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Av. Dr. Arnaldo, 725, Sumaré - São Paulo (Faculdade de Saúde Pública – USP)", "lat": -23.553543, "lon": -46.672705, "fuso": "23K", "utm_x": 329269, "utm_y": 7394205, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 51616, "mean": 649.65, "std": 418.3, "min": 0.0, "max": 5614.48}, "FMC": {"count": 361, "mean": 19.69, "std": 14.17, "min": 1.0, "max": 95.0}, "MP10": {"count": 58531, "mean": 25.12, "std": 16.46, "min": 0.0, "max": 152.0}, "MP2.5": {"count": 374, "mean": 14.75, "std": 8.31, "min": 1.0, "max": 50.0}, "NO": {"count": 7847, "mean": 27.44, "std": 36.06, "min": 0.0, "max": 354.0}, "NO2": {"count": 54174, "mean": 36.67, "std": 23.89, "min": 0.0, "max": 229.0}, "PTS": {"count": 280, "mean": 49.35, "std": 28.27, "min": 6.0, "max": 153.0}, "SO2": {"count": 51287, "mean": 1.86, "std": 1.94, "min": 0.0, "max": 32.0}}}, {"codigo": "SP15", "nome": "Cid.Universitária USP - IPEN", "nome_cetesb": "Cid. Universitária - USP - IPEN", "tipo": "Automatica", "ugrhi": "6", "municipio": "Cid. Universitária", "endereco": "Av. Profº Lineu Prestes, 2242, Cidade Universitária - São Paulo (IPEN-Instituto de Pesquisas Energéticas e Nucleares)", "lat": -23.566342, "lon": -46.737414, "fuso": "23K", "utm_x": 322680, "utm_y": 7392709, "obs": "Início da operação: 01/01/2007", "pollutants": {"CO": {"count": 7651, "mean": 673.68, "std": 474.51, "min": 0.0, "max": 4616.35}, "MP2.5": {"count": 56723, "mean": 14.24, "std": 13.1, "min": 0.0, "max": 543.0}, "NO": {"count": 6505, "mean": 13.09, "std": 29.13, "min": 0.0, "max": 276.0}, "NO2": {"count": 29927, "mean": 31.7, "std": 22.24, "min": 0.0, "max": 212.0}, "O3": {"count": 55946, "mean": 40.92, "std": 37.14, "min": 0.0, "max": 767.0}}}, {"codigo": "SP16", "nome": "Congonhas", "nome_cetesb": "Congonhas", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Al. dos Tupiniquins, 1571, Planalto Paulista - São Paulo (Escola Municipal Prof. J.C. da Silva Borges)", "lat": -23.61632, "lon": -46.663466, "fuso": "23K", "utm_x": 330293, "utm_y": 7387264, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 53543, "mean": 1042.79, "std": 626.94, "min": 0.0, "max": 9981.29}, "MP10": {"count": 57716, "mean": 29.39, "std": 18.96, "min": 0.0, "max": 238.0}, "MP2.5": {"count": 56136, "mean": 18.11, "std": 12.7, "min": 0.0, "max": 122.0}, "NO": {"count": 7846, "mean": 45.23, "std": 46.94, "min": 0.0, "max": 625.0}, "NO2": {"count": 53934, "mean": 59.0, "std": 25.36, "min": 0.0, "max": 256.0}, "SO2": {"count": 51340, "mean": 2.52, "std": 2.26, "min": 0.0, "max": 50.0}}}, {"codigo": "SP17", "nome": "Cordeirópolis - Módolo", "nome_cetesb": "Cordeirópolis - Módolo", "tipo": "Manual", "ugrhi": "5", "municipio": "Cordeirópolis", "endereco": "Rua Visconde do Rio Branco s/nº, esquina com Rua Dino Boldrini, Bairro Módolo - Cordeirópolis", "lat": -22.480885, "lon": -47.467454, "fuso": "23K", "utm_x": 246119, "utm_y": 7511853, "obs": "Início da operação: 06/08/1998", "pollutants": {"MP10": {"count": 361, "mean": 38.81, "std": 22.1, "min": 4.0, "max": 120.0}}}, {"codigo": "SP18", "nome": "Cubatão - Centro", "nome_cetesb": "Cubatão - Centro", "tipo": "Automatica", "ugrhi": "7", "municipio": "Cubatão", "endereco": "Rua Salgado Filho, 121, Pq. Fernando Jorge - Cubatão (Centro Social Urbano de Cubatão)", "lat": -23.879027, "lon": -46.418483, "fuso": "23K", "utm_x": 355580, "utm_y": 7358443, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"MP10": {"count": 57482, "mean": 25.92, "std": 20.94, "min": 0.0, "max": 705.0}, "NO": {"count": 7625, "mean": 23.48, "std": 31.43, "min": 0.0, "max": 276.0}, "NO2": {"count": 51797, "mean": 30.86, "std": 17.18, "min": 0.0, "max": 226.0}, "O3": {"count": 54468, "mean": 26.87, "std": 28.93, "min": 0.0, "max": 274.0}, "SO2": {"count": 54551, "mean": 9.85, "std": 61.94, "min": 0.0, "max": 9645.0}}}, {"codigo": "SP19", "nome": "Cubatão - Vale do Mogi", "nome_cetesb": "Cubatão - Vale do Mogi", "tipo": "Automatica", "ugrhi": "7", "municipio": "Cubatão", "endereco": "Av. Engº Plínio de Queiróz, s/nº, Jardim São Marcos - Cubatão", "lat": -23.831589, "lon": -46.369569, "fuso": "23K", "utm_x": 360510, "utm_y": 7363745, "obs": "Início da operação: 05/04/2006", "pollutants": {"MP10": {"count": 59684, "mean": 38.6, "std": 30.07, "min": 0.0, "max": 931.0}, "NO": {"count": 7012, "mean": 32.71, "std": 30.3, "min": 0.0, "max": 340.0}, "NO2": {"count": 51869, "mean": 35.49, "std": 18.08, "min": 0.0, "max": 271.0}, "O3": {"count": 53438, "mean": 20.01, "std": 22.19, "min": 0.0, "max": 225.0}, "SO2": {"count": 53578, "mean": 7.21, "std": 11.79, "min": 0.0, "max": 448.0}}}, {"codigo": "SP20", "nome": "Cubatão - Vila Parisi", "nome_cetesb": "Cubatão - Vila Parisi", "tipo": "Automatica", "ugrhi": "7", "municipio": "Cubatão", "endereco": "Rua Prefeito Armando Cunha, 70, Vila Parisi - Cubatão", "lat": -23.849416, "lon": -46.388676, "fuso": "23K", "utm_x": 358583, "utm_y": 7361752, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"MP10": {"count": 59648, "mean": 73.01, "std": 58.44, "min": 0.0, "max": 1924.0}, "NO": {"count": 7073, "mean": 90.31, "std": 71.29, "min": 0.0, "max": 768.0}, "NO2": {"count": 52242, "mean": 48.75, "std": 21.16, "min": 0.0, "max": 278.0}, "PTS": {"count": 208, "mean": 201.07, "std": 129.66, "min": 27.0, "max": 708.0}, "SO2": {"count": 54326, "mean": 10.73, "std": 18.54, "min": 0.0, "max": 711.0}}}, {"codigo": "SP21", "nome": "Diadema", "nome_cetesb": "Diadema", "tipo": "Automatica", "ugrhi": "6", "municipio": "Diadema", "endereco": "Rua Benjamin Constant, 3, Vila Diadema - Diadema (Prefeitura Municipal de Diadema)", "lat": -23.685876, "lon": -46.611622, "fuso": "23K", "utm_x": 335670, "utm_y": 7379622, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"MP10": {"count": 54934, "mean": 25.6, "std": 18.85, "min": 0.0, "max": 299.0}, "O3": {"count": 52601, "mean": 35.59, "std": 31.18, "min": 0.0, "max": 327.0}}}, {"codigo": "SP101", "nome": "Franca - Centro", "nome_cetesb": "Franca - Centro", "tipo": "Manual", "ugrhi": "8", "municipio": "Franca", "endereco": "Rua Homero Pacheco Alves, s/nº, Praça Nª. Sra. da Conceição, Centro - Franca", "lat": -20.538823, "lon": -47.401382, "fuso": "23K", "utm_x": 249613, "utm_y": 7727049, "obs": "Início: 03/01/1986; Desativada: 31/12/2016", "pollutants": {"FMC": {"count": 96, "mean": 3.94, "std": 2.09, "min": 1.0, "max": 11.0}}}, {"codigo": "SP22", "nome": "Franca - Cidade Nova", "nome_cetesb": "Franca - Cidade Nova", "tipo": "Manual", "ugrhi": "8", "municipio": "Franca", "endereco": "Avenida Presidente Vargas, s/nº, Cidade Nova - Franca (Prefeitura Municipal de Franca)", "lat": -20.52828, "lon": -47.393252, "fuso": "23K", "utm_x": 250444, "utm_y": 7728229, "obs": "Início da operação: 04/02/2016", "pollutants": {"MP10": {"count": 300, "mean": 21.44, "std": 19.55, "min": 2.0, "max": 211.0}}}, {"codigo": "SP43", "nome": "Grajaú - Parelheiros", "nome_cetesb": "Grajaú - Parelheiros", "tipo": "Automatica", "ugrhi": "6", "municipio": "Grajaú", "endereco": "Av. Paulo Guilguer Reimberg, 2448, Jd. Novo Horizonte - São Paulo (E.E. Pres. Tancredo de Almeida Neves)", "lat": -23.776266, "lon": -46.696961, "fuso": "23K", "utm_x": 327086, "utm_y": 7369511, "obs": "Início da operação: 22/06/2007", "pollutants": {"CO": {"count": 41046, "mean": 748.05, "std": 589.83, "min": 0.0, "max": 7361.2}, "MP10": {"count": 57372, "mean": 35.44, "std": 29.83, "min": 0.0, "max": 566.0}, "MP2.5": {"count": 56617, "mean": 16.74, "std": 15.44, "min": 0.0, "max": 415.0}, "NO": {"count": 8286, "mean": 18.45, "std": 32.82, "min": 0.0, "max": 440.0}, "NO2": {"count": 27080, "mean": 28.95, "std": 19.58, "min": 0.0, "max": 184.0}, "O3": {"count": 46118, "mean": 39.05, "std": 27.74, "min": 0.0, "max": 306.0}}}, {"codigo": "SP04", "nome": "Guaratinguetá", "nome_cetesb": "Guaratinguetá", "tipo": "Automatica", "ugrhi": "2", "municipio": "Guaratinguetá", "endereco": "Av. Dr. Ariberto Pereira da Cunha, 333, Portal das Colinas - Guaratinguetá (UNESP - Faculdade de Engenharia)", "lat": -22.801917, "lon": -45.191122, "fuso": "23K", "utm_x": 480385, "utm_y": 7478395, "obs": "Início da operação: 01/01/2017", "pollutants": {"MP10": {"count": 24078, "mean": 19.75, "std": 15.09, "min": 0.0, "max": 217.0}, "MP2.5": {"count": 19989, "mean": 11.47, "std": 7.44, "min": 0.0, "max": 100.0}, "NO": {"count": 6104, "mean": 2.88, "std": 6.14, "min": 0.0, "max": 66.0}, "NO2": {"count": 28964, "mean": 12.39, "std": 9.75, "min": 0.0, "max": 88.0}, "O3": {"count": 37362, "mean": 40.71, "std": 25.23, "min": 0.0, "max": 150.0}}}, {"codigo": "SP23", "nome": "Guarujá - Vicente de Carvalho", "nome_cetesb": "Guarujá - Vicente de Carvalho", "tipo": "Manual", "ugrhi": "7", "municipio": "Guarujá", "endereco": "Rua Capitão Alberto Mendes Júnior, 225, Jd Boa Esperança - Vicente de Carvalho, Guarujá", "lat": -23.959395, "lon": -46.284527, "fuso": "23K", "utm_x": 369301, "utm_y": 7349674, "obs": "Início da operação: 01/02/2016", "pollutants": {"MP10": {"count": 288, "mean": 33.27, "std": 18.59, "min": 2.0, "max": 153.0}}}, {"codigo": "SP24", "nome": "Guarulhos - Paço Municipal", "nome_cetesb": "Guarulhos - Paço Municipal", "tipo": "Automatica", "ugrhi": "6", "municipio": "Guarulhos", "endereco": "Av. João Bernardo Medeiros, 173, Bom Clima - Guarulhos (Paço Municipal)", "lat": -23.455534, "lon": -46.518533, "fuso": "23K", "utm_x": 344893, "utm_y": 7405233, "obs": "Início da operação: 27/02/2012", "pollutants": {"MP10": {"count": 53255, "mean": 27.53, "std": 22.44, "min": 0.0, "max": 268.0}, "MP2.5": {"count": 39792, "mean": 16.08, "std": 13.58, "min": 0.0, "max": 244.0}, "NO": {"count": 8100, "mean": 7.83, "std": 16.64, "min": 0.0, "max": 253.0}, "NO2": {"count": 26038, "mean": 29.82, "std": 20.49, "min": 0.0, "max": 176.0}, "O3": {"count": 59255, "mean": 38.26, "std": 32.06, "min": 0.0, "max": 283.0}}}, {"codigo": "SP25", "nome": "Guarulhos - Pimentas", "nome_cetesb": "Guarulhos - Pimentas", "tipo": "Automatica", "ugrhi": "6", "municipio": "Guarulhos", "endereco": "Rua Imperial, 230, Parque das Nações - Guarulhos (Hospital Municipal Pimentas - Bonsucesso)", "lat": -23.440117, "lon": -46.409949, "fuso": "23K", "utm_x": 355969, "utm_y": 7407053, "obs": "Início da operação: 03/06/2015", "pollutants": {"CO": {"count": 18707, "mean": 633.15, "std": 373.82, "min": 0.0, "max": 4491.58}, "MP10": {"count": 43879, "mean": 31.47, "std": 28.73, "min": 0.0, "max": 906.0}, "MP2.5": {"count": 49308, "mean": 18.72, "std": 19.21, "min": 0.0, "max": 920.0}, "NO": {"count": 8367, "mean": 8.53, "std": 20.28, "min": 0.0, "max": 323.0}, "NO2": {"count": 49770, "mean": 23.31, "std": 16.5, "min": 0.0, "max": 220.0}, "O3": {"count": 53201, "mean": 43.29, "std": 27.14, "min": 0.0, "max": 264.0}, "SO2": {"count": 51912, "mean": 2.65, "std": 4.18, "min": 0.0, "max": 178.0}}}, {"codigo": "SP26", "nome": "Ibirapuera", "nome_cetesb": "Ibirapuera", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Parque do Ibirapuera s/nº - setor 25, Prq. Ibirapuera - São Paulo", "lat": -23.591842, "lon": -46.660688, "fuso": "23K", "utm_x": 330545, "utm_y": 7389978, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 30620, "mean": 338.1, "std": 345.61, "min": 0.0, "max": 4491.58}, "FMC": {"count": 318, "mean": 12.89, "std": 10.56, "min": 1.0, "max": 68.0}, "MP2.5": {"count": 52969, "mean": 14.75, "std": 12.3, "min": 0.0, "max": 119.0}, "NO": {"count": 6623, "mean": 6.93, "std": 20.22, "min": 0.0, "max": 286.0}, "NO2": {"count": 52057, "mean": 27.25, "std": 19.32, "min": 0.0, "max": 197.0}, "O3": {"count": 54494, "mean": 43.06, "std": 35.55, "min": 0.0, "max": 296.0}, "PTS": {"count": 176, "mean": 44.06, "std": 28.4, "min": 4.0, "max": 157.0}}}, {"codigo": "SP27", "nome": "Interlagos", "nome_cetesb": "Interlagos", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Rua Domingas Galleteri Blota, 171, Campo Grande - São Paulo (Hospital Geral Pedreira)", "lat": -23.680508, "lon": -46.675043, "fuso": "23K", "utm_x": 329195, "utm_y": 7380142, "obs": "Início da operação: 27/02/2012", "pollutants": {"MP10": {"count": 56401, "mean": 23.95, "std": 18.14, "min": 0.0, "max": 318.0}, "NO": {"count": 7692, "mean": 11.08, "std": 18.98, "min": 0.0, "max": 238.0}, "NO2": {"count": 39825, "mean": 27.13, "std": 18.83, "min": 0.0, "max": 188.0}, "O3": {"count": 54995, "mean": 41.86, "std": 32.04, "min": 0.0, "max": 326.0}, "SO2": {"count": 44498, "mean": 1.91, "std": 1.78, "min": 0.0, "max": 49.0}}}, {"codigo": "SP28", "nome": "Itaim Paulista", "nome_cetesb": "Itaim Paulista", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Rua Jaguar, 225, Vila Curuçá - São Paulo (Biblioteca Municipal Vicente Paulo Guimarães)", "lat": -23.501547, "lon": -46.420737, "fuso": "23K", "utm_x": 354934, "utm_y": 7400240, "obs": "Início da operação: 03/07/2012", "pollutants": {"MP10": {"count": 56347, "mean": 29.62, "std": 27.01, "min": 0.0, "max": 500.0}, "MP2.5": {"count": 43940, "mean": 17.67, "std": 17.92, "min": 0.0, "max": 261.0}, "NO2": {"count": 31447, "mean": 20.25, "std": 16.26, "min": 0.0, "max": 179.0}, "O3": {"count": 56079, "mean": 40.28, "std": 29.46, "min": 0.0, "max": 268.0}}}, {"codigo": "SP29", "nome": "Itaquera", "nome_cetesb": "Itaquera", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Av. Fernando do Espírito Santo Alves de Matos, 1000, Parque do Carmo - São Paulo (SESC Itaquera)", "lat": -23.580015, "lon": -46.466651, "fuso": "23K", "utm_x": 350334, "utm_y": 7391504, "obs": "Início da operação: 09/08/2007", "pollutants": {"O3": {"count": 47968, "mean": 39.08, "std": 32.31, "min": 0.0, "max": 272.0}}}, {"codigo": "SP30", "nome": "Itu - Centro", "nome_cetesb": "Itu - Centro", "tipo": "Manual", "ugrhi": "10", "municipio": "Itu", "endereco": "Praça D. Pedro I, s/nº, Centro - Itu", "lat": -23.261129, "lon": -47.303142, "fuso": "23K", "utm_x": 264383, "utm_y": 7425702, "obs": "Início da operação: 03/01/1986", "pollutants": {"FMC": {"count": 324, "mean": 9.9, "std": 5.59, "min": 1.0, "max": 35.0}}}, {"codigo": "SP31", "nome": "Jaboticabal - Jd Kennedy", "nome_cetesb": "Jaboticabal - Jd. Kennedy", "tipo": "Manual", "ugrhi": "9", "municipio": "Jaboticabal", "endereco": "Rua Monte Alto, 345, Centro - Jaboticabal (SAAE / Jaboticabal)", "lat": -21.262739, "lon": -48.32918, "fuso": "22K", "utm_x": 777161, "utm_y": 7646430, "obs": "Início da operação: 26/01/2011", "pollutants": {"MP10": {"count": 304, "mean": 33.23, "std": 21.21, "min": 2.0, "max": 148.0}}}, {"codigo": "SP32", "nome": "Jacareí", "nome_cetesb": "Jacareí", "tipo": "Automatica", "ugrhi": "2", "municipio": "Jacareí", "endereco": "Av. Nove de Julho, 745, Jd. Pereira do Amparo - Jacareí (Escola Técnica Agrícola Cônego José Bento)", "lat": -23.294199, "lon": -45.968234, "fuso": "23K", "utm_x": 400987, "utm_y": 7423581, "obs": "Início da operação: 01/01/2011", "pollutants": {"MP10": {"count": 37219, "mean": 21.0, "std": 18.87, "min": 0.0, "max": 211.0}, "NO": {"count": 4060, "mean": 8.01, "std": 14.78, "min": 0.0, "max": 118.0}, "NO2": {"count": 31117, "mean": 11.39, "std": 10.59, "min": 0.0, "max": 137.0}, "O3": {"count": 36824, "mean": 35.82, "std": 30.79, "min": 0.0, "max": 220.0}}}, {"codigo": "SP33", "nome": "Jaú", "nome_cetesb": "Jaú", "tipo": "Automatica", "ugrhi": "13", "municipio": "Jaú", "endereco": "Rua 7 de Setembro esq com R. Benjamin Constant, Vila Nova Jaú - Jaú (27º Batalhão da Polícia Militar do Interior)", "lat": -22.29862, "lon": -48.567457, "fuso": "22K", "utm_x": 750614, "utm_y": 7532100, "obs": "Início da operação: 25/09/2008", "pollutants": {"MP10": {"count": 57743, "mean": 24.62, "std": 20.12, "min": 0.0, "max": 462.0}, "NO": {"count": 7892, "mean": 2.84, "std": 5.02, "min": 0.0, "max": 152.0}, "NO2": {"count": 55774, "mean": 14.61, "std": 12.2, "min": 0.0, "max": 158.0}, "O3": {"count": 51798, "mean": 44.27, "std": 26.07, "min": 0.0, "max": 175.0}}}, {"codigo": "SP34", "nome": "Jundiaí", "nome_cetesb": "Jundiaí", "tipo": "Automatica", "ugrhi": "5", "municipio": "Jundiaí", "endereco": "Rua Amadeu Ribeiro, 500, Anhangabaú - Jundiaí (Complexo Esportivo 'Bolão')", "lat": -23.192004, "lon": -46.897097, "fuso": "23K", "utm_x": 305834, "utm_y": 7433959, "obs": "Início da operação: 14/10/2008", "pollutants": {"MP10": {"count": 59102, "mean": 24.27, "std": 16.78, "min": 0.0, "max": 193.0}, "MP2.5": {"count": 22433, "mean": 13.56, "std": 10.99, "min": 0.0, "max": 130.0}, "NO": {"count": 8255, "mean": 6.01, "std": 12.51, "min": 0.0, "max": 130.0}, "NO2": {"count": 52690, "mean": 24.89, "std": 17.89, "min": 0.0, "max": 160.0}, "O3": {"count": 57444, "mean": 42.45, "std": 35.19, "min": 0.0, "max": 289.0}}}, {"codigo": "SP35", "nome": "Jundiaí - Centro", "nome_cetesb": "Jundiaí - Centro", "tipo": "Manual", "ugrhi": "5", "municipio": "Jundiaí", "endereco": "Av. Prof. Luiz Rosa, s/nº, Vila Padre Nóbrega - Jundiaí (Velório Municipal Adamastor Fernandes)", "lat": -23.181464, "lon": -46.890473, "fuso": "23K", "utm_x": 306497, "utm_y": 7435135, "obs": "Novo endereço a partir de fev/2007; Anterior: Centro Esportivo Ovídeo Bueno", "pollutants": {"FMC": {"count": 304, "mean": 17.9, "std": 9.77, "min": 2.0, "max": 65.0}}}, {"codigo": "SP36", "nome": "Limeira", "nome_cetesb": "Limeira", "tipo": "Automatica", "ugrhi": "5", "municipio": "Limeira", "endereco": "Rua João Kuhl Filho, s/nº, esquina com Rua João Jacon, Parque Cidade de Limeira - Vila São João - Limeira", "lat": -22.563604, "lon": -47.414314, "fuso": "23K", "utm_x": 251737, "utm_y": 7502780, "obs": "Início da operação: 01/01/2016", "pollutants": {"MP10": {"count": 47774, "mean": 32.39, "std": 24.14, "min": 0.0, "max": 457.0}, "MP2.5": {"count": 16072, "mean": 13.01, "std": 9.45, "min": 0.0, "max": 116.0}, "NO": {"count": 8003, "mean": 8.85, "std": 17.13, "min": 0.0, "max": 227.0}, "NO2": {"count": 47294, "mean": 20.15, "std": 14.95, "min": 0.0, "max": 147.0}, "O3": {"count": 48026, "mean": 44.79, "std": 31.37, "min": 0.0, "max": 195.0}}}, {"codigo": "SP108", "nome": "Limeira - Boa Vista", "nome_cetesb": "Limeira - Boa Vista", "tipo": "Manual", "ugrhi": "5", "municipio": "Limeira", "endereco": "Largo São Sebastião, 120, Boa Vista - Limeira (Batalhão Comunitário Boa Vista)", "lat": -22.559678, "lon": -47.398547, "fuso": "23K", "utm_x": 253352, "utm_y": 7503241, "obs": "Início: 15/11/2000; Desativada em 30/07/2017", "pollutants": {"MP10": {"count": 140, "mean": 31.76, "std": 16.81, "min": 2.0, "max": 97.0}}}, {"codigo": "SP109", "nome": "Limeira - Centro", "nome_cetesb": "Limeira - Centro", "tipo": "Manual", "ugrhi": "5", "municipio": "Limeira", "endereco": "Rua Boa Morte, 135, Centro - Limeira (Praça do Poder Legislativo)", "lat": -22.56749, "lon": -47.400179, "fuso": "23K", "utm_x": 253198, "utm_y": 7502373, "obs": "Início: 03/01/1986; Desativada em 30/03/2017", "pollutants": {"FMC": {"count": 112, "mean": 11.79, "std": 8.73, "min": 2.0, "max": 48.0}}}, {"codigo": "SP37", "nome": "Marg. Tietê - Pte dos Remédios", "nome_cetesb": "Marg. Tietê - Ponte dos Remédios", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Av. Embaixador Macedo Soares, 12889, Vila Leopoldina - São Paulo (Comando de Policiamento Rodoviário da PM)", "lat": -23.518706, "lon": -46.74332, "fuso": "23K", "utm_x": 322013, "utm_y": 7397977, "obs": "Início da operação: 01/09/2012", "pollutants": {"CO": {"count": 49091, "mean": 853.14, "std": 573.36, "min": 0.0, "max": 4990.65}, "FMC": {"count": 152, "mean": 35.86, "std": 25.76, "min": 2.0, "max": 159.0}, "MP10": {"count": 58650, "mean": 32.06, "std": 23.24, "min": 0.0, "max": 253.0}, "MP2.5": {"count": 58358, "mean": 19.36, "std": 15.36, "min": 0.0, "max": 164.0}, "NO": {"count": 8184, "mean": 59.93, "std": 74.52, "min": 0.0, "max": 527.0}, "NO2": {"count": 56478, "mean": 55.14, "std": 29.58, "min": 3.0, "max": 240.0}, "SO2": {"count": 55721, "mean": 2.4, "std": 1.91, "min": 0.0, "max": 32.0}}}, {"codigo": "SP38", "nome": "Marília", "nome_cetesb": "Marília", "tipo": "Automatica", "ugrhi": "21", "municipio": "Marília", "endereco": "Rua Pascoal Moreira, 250, Lorenzetti - Marília (Unidade Básica de Saúde)", "lat": -22.199809, "lon": -49.95997, "fuso": "22K", "utm_x": 607206, "utm_y": 7544689, "obs": "Início da operação: 30/04/2008", "pollutants": {"MP10": {"count": 58453, "mean": 20.64, "std": 16.58, "min": 0.0, "max": 726.0}, "NO": {"count": 6443, "mean": 1.44, "std": 2.77, "min": 0.0, "max": 57.0}, "NO2": {"count": 49168, "mean": 11.07, "std": 10.88, "min": 0.0, "max": 136.0}, "O3": {"count": 49587, "mean": 53.91, "std": 23.53, "min": 0.0, "max": 168.0}}}, {"codigo": "SP39", "nome": "Mauá", "nome_cetesb": "Mauá", "tipo": "Automatica", "ugrhi": "6", "municipio": "Mauá", "endereco": "Rua Vitorino Dell Antonia, s/nº, Vila Noêmia - Mauá (Paço Municipal)", "lat": -23.668549, "lon": -46.466, "fuso": "23K", "utm_x": 350501, "utm_y": 7381701, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"MP10": {"count": 44531, "mean": 29.77, "std": 26.76, "min": 0.0, "max": 299.0}, "MP2.5": {"count": 20414, "mean": 14.66, "std": 13.59, "min": 0.0, "max": 157.0}, "NO": {"count": 6380, "mean": 7.47, "std": 16.58, "min": 0.0, "max": 240.0}, "NO2": {"count": 25195, "mean": 23.93, "std": 17.76, "min": 0.0, "max": 209.0}, "O3": {"count": 48746, "mean": 35.68, "std": 28.07, "min": 0.0, "max": 302.0}}}, {"codigo": "SP112", "nome": "Mogi das Cruzes - Centro", "nome_cetesb": "Mogi das Cruzes - Centro", "tipo": "Automatica", "ugrhi": "6", "municipio": "Mogi das Cruzes", "endereco": "Rua Engº Gualberto, 150, Centro - Mogi das Cruzes (E. E. 1º e 2º Grau Deodato Wertheimer)", "lat": -23.52226, "lon": -46.200218, "fuso": "23K", "utm_x": 377472, "utm_y": 7398152, "obs": "Início: 06/01/1986; Desativada: 30/11/2014", "pollutants": {"MP10": {"count": 7706, "mean": 23.0, "std": 18.16, "min": 0.0, "max": 296.0}, "NO": {"count": 5833, "mean": 6.23, "std": 13.65, "min": 0.0, "max": 176.0}, "NO2": {"count": 6554, "mean": 17.57, "std": 13.55, "min": 0.0, "max": 146.0}, "O3": {"count": 10830, "mean": 48.65, "std": 27.39, "min": 0.0, "max": 210.0}}}, {"codigo": "SP40", "nome": "Mooca", "nome_cetesb": "Mooca", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Rua Bresser, 2341, Moóca - São Paulo (Centro Esportivo Municipal - Subprefeitura da Moóca)", "lat": -23.549734, "lon": -46.600417, "fuso": "23K", "utm_x": 336644, "utm_y": 7394711, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 52473, "mean": 623.69, "std": 453.74, "min": 0.0, "max": 5364.94}, "MP10": {"count": 23917, "mean": 26.89, "std": 22.27, "min": 0.0, "max": 217.0}, "MP2.5": {"count": 29263, "mean": 15.5, "std": 12.87, "min": 0.0, "max": 124.0}, "O3": {"count": 55623, "mean": 36.86, "std": 31.48, "min": 0.0, "max": 269.0}}}, {"codigo": "SP41", "nome": "Nossa Senhora do Ó", "nome_cetesb": "Nossa Senhora do Ó", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Rua Cap. José Amaral, 80, Vila Portuguesa - São Paulo (Escola Estadual Cacilda Becker)", "lat": -23.480099, "lon": -46.692052, "fuso": "23K", "utm_x": 327198, "utm_y": 7402315, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"MP10": {"count": 56785, "mean": 26.38, "std": 19.47, "min": 0.0, "max": 353.0}, "O3": {"count": 56556, "mean": 34.21, "std": 32.99, "min": 0.0, "max": 279.0}}}, {"codigo": "SP42", "nome": "Osasco", "nome_cetesb": "Osasco", "tipo": "Automatica", "ugrhi": "6", "municipio": "Osasco", "endereco": "Av. dos Autonomistas, s/nº - esquina com Rua São Maurício, Vila Quitaúna - Osasco", "lat": -23.526721, "lon": -46.792078, "fuso": "23K", "utm_x": 317045, "utm_y": 7397028, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 56050, "mean": 1064.25, "std": 671.06, "min": 0.0, "max": 7111.67}, "MP10": {"count": 59154, "mean": 39.93, "std": 31.62, "min": 0.0, "max": 403.0}, "MP2.5": {"count": 36674, "mean": 20.52, "std": 16.95, "min": 0.0, "max": 318.0}, "NO": {"count": 7729, "mean": 57.42, "std": 57.33, "min": 0.0, "max": 462.0}, "NO2": {"count": 54977, "mean": 45.18, "std": 21.25, "min": 0.0, "max": 209.0}, "PTS": {"count": 287, "mean": 88.39, "std": 43.6, "min": 13.0, "max": 258.0}, "SO2": {"count": 56293, "mean": 2.36, "std": 1.72, "min": 0.0, "max": 55.0}}}, {"codigo": "SP44", "nome": "Parque Dom Pedro II", "nome_cetesb": "Parque D. Pedro II", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Parque D. Pedro II, s/nº, Centro - São Paulo (Palácio das Indústrias)", "lat": -23.544846, "lon": -46.627676, "fuso": "23K", "utm_x": 333855, "utm_y": 7395221, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 55227, "mean": 526.61, "std": 460.13, "min": 0.0, "max": 5988.78}, "MP10": {"count": 55436, "mean": 28.17, "std": 21.97, "min": 0.0, "max": 322.0}, "MP2.5": {"count": 40151, "mean": 17.11, "std": 13.98, "min": 0.0, "max": 209.0}, "NO": {"count": 7528, "mean": 17.14, "std": 35.94, "min": 0.0, "max": 671.0}, "NO2": {"count": 53883, "mean": 37.76, "std": 22.46, "min": 0.0, "max": 213.0}, "O3": {"count": 56171, "mean": 34.95, "std": 31.88, "min": 0.0, "max": 328.0}, "SO2": {"count": 17725, "mean": 1.92, "std": 1.97, "min": 0.0, "max": 22.0}}}, {"codigo": "SP45", "nome": "Paulínia", "nome_cetesb": "Paulínia", "tipo": "Automatica", "ugrhi": "5", "municipio": "Paulínia", "endereco": "Praça Oadil Pietrobom, s/nº, Vila Bressani - Paulínia", "lat": -22.772321, "lon": -47.154843, "fuso": "23K", "utm_x": 278763, "utm_y": 7480073, "obs": "Início da operação: 15/02/2000; Qualar a partir de 01/01/1998", "pollutants": {"MP10": {"count": 58132, "mean": 28.57, "std": 21.39, "min": 0.0, "max": 416.0}, "NO": {"count": 7847, "mean": 5.45, "std": 13.11, "min": 0.0, "max": 152.0}, "NO2": {"count": 47986, "mean": 20.46, "std": 16.36, "min": 0.0, "max": 153.0}, "O3": {"count": 53614, "mean": 37.34, "std": 35.57, "min": 0.0, "max": 232.0}, "SO2": {"count": 46868, "mean": 4.19, "std": 8.08, "min": 0.0, "max": 263.0}}}, {"codigo": "SP46", "nome": "Paulínia - Bairro Cascata", "nome_cetesb": "Paulínia - B.Cascata", "tipo": "Manual", "ugrhi": "5", "municipio": "Paulínia", "endereco": "Av. Paris, 3218, Bairro Cascata - Paulínia", "lat": -22.717369, "lon": -47.153553, "fuso": "23K", "utm_x": 278807, "utm_y": 7486161, "obs": "Amostrador Passivo SO2 / Manual; Início da operação: 01/11/2002", "pollutants": {"SO2": {"count": 57, "mean": 11.74, "std": 3.25, "min": 3.0, "max": 27.0}}}, {"codigo": "SP47", "nome": "Paulínia - João Aranha", "nome_cetesb": "Paulínia - João Aranha", "tipo": "Manual", "ugrhi": "5", "municipio": "Paulínia", "endereco": "Rua Adolfo Botasso, s/nº, Centro Básico de Saúde - Jd. Planalto - Paulínia", "lat": -22.748196, "lon": -47.172153, "fuso": "23K", "utm_x": 276946, "utm_y": 7482719, "obs": "Amostrador Passivo SO2 / Manual; Início da operação: 01/01/2014", "pollutants": {"SO2": {"count": 58, "mean": 3.41, "std": 1.2, "min": 3.0, "max": 10.0}}}, {"codigo": "SP114", "nome": "Paulínia - Santa Terezinha", "nome_cetesb": "Paulínia - Santa Terezinha", "tipo": "Automatica", "ugrhi": "5", "municipio": "Paulínia", "endereco": "Rua Vitalino Ferro, 350, Santa Terezinha - Paulínia", "lat": -22.780209, "lon": -47.139036, "fuso": "23K", "utm_x": 280399, "utm_y": 7479223, "obs": "Início de operação: 08/03/2018", "pollutants": {"MP10": {"count": 18626, "mean": 31.28, "std": 26.47, "min": 0.0, "max": 510.0}, "MP2.5": {"count": 9915, "mean": 16.67, "std": 14.32, "min": 0.0, "max": 146.0}, "NO2": {"count": 20877, "mean": 18.09, "std": 14.85, "min": 0.0, "max": 131.0}, "O3": {"count": 22229, "mean": 41.48, "std": 33.71, "min": 0.0, "max": 191.0}, "SO2": {"count": 15371, "mean": 4.65, "std": 8.17, "min": 0.0, "max": 259.0}}}, {"codigo": "SP48", "nome": "Paulínia - Sul", "nome_cetesb": "Paulínia - Sul", "tipo": "Automatica", "ugrhi": "5", "municipio": "Paulínia", "endereco": "Rua Angelo Pigatto Ferro, s/nº, Bairro Santa Terezinha - Paulínia", "lat": -22.786806, "lon": -47.136559, "fuso": "23K", "utm_x": 280664, "utm_y": 7478496, "obs": "Monitoramento de 04/03/2008 a 16/02/2018", "pollutants": {"MP10": {"count": 32067, "mean": 35.57, "std": 31.48, "min": 0.0, "max": 715.0}, "MP2.5": {"count": 6752, "mean": 15.34, "std": 13.16, "min": 0.0, "max": 446.0}, "NO": {"count": 5164, "mean": 10.93, "std": 21.72, "min": 0.0, "max": 193.0}, "NO2": {"count": 22358, "mean": 21.02, "std": 15.8, "min": 0.0, "max": 139.0}, "O3": {"count": 29463, "mean": 35.82, "std": 32.85, "min": 0.0, "max": 203.0}, "SO2": {"count": 20120, "mean": 6.34, "std": 11.42, "min": 0.0, "max": 226.0}}}, {"codigo": "SP144", "nome": "Perus", "nome_cetesb": "Perus", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Estrada São Paulo-Jundiaí, nº 1666, Perus - São Paulo (Centro de Esporte e Lazer Perus)", "lat": -23.41321, "lon": -46.756054, "fuso": "23K", "utm_x": 320570, "utm_y": 7409644, "obs": "Início da operação: 10/03/2019", "pollutants": {"MP10": {"count": 20202, "mean": 30.42, "std": 28.27, "min": 0.0, "max": 555.0}, "MP2.5": {"count": 16642, "mean": 15.15, "std": 13.77, "min": 0.0, "max": 403.0}, "O3": {"count": 20540, "mean": 49.79, "std": 35.87, "min": 0.0, "max": 298.0}}}, {"codigo": "SP49", "nome": "Pico do Jaraguá", "nome_cetesb": "Pico do Jaraguá", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Estr. Turística do Jaraguá, s/nº, alt do nº 9000, em frente a rotatória Cabo Leão, Vila Jaraguá - São Paulo", "lat": -23.456269, "lon": -46.766098, "fuso": "23K", "utm_x": 319602, "utm_y": 7404863, "obs": "Início da operação: 20/07/2016", "pollutants": {"MP2.5": {"count": 39864, "mean": 13.69, "std": 12.1, "min": 0.0, "max": 396.0}, "NO": {"count": 7631, "mean": 5.55, "std": 13.08, "min": 0.0, "max": 162.0}, "NO2": {"count": 38783, "mean": 16.56, "std": 13.86, "min": 0.0, "max": 162.0}, "O3": {"count": 38532, "mean": 54.54, "std": 33.57, "min": 0.0, "max": 290.0}}}, {"codigo": "SP50", "nome": "Pinheiros", "nome_cetesb": "Pinheiros", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Av. Prof. Frederico Hermann Jr., 345, Alto de Pinheiros - São Paulo (CETESB)", "lat": -23.56146, "lon": -46.702017, "fuso": "23K", "utm_x": 326287, "utm_y": 7393293, "obs": "Início da operação: 01/09/1999; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 49470, "mean": 731.55, "std": 661.59, "min": 0.0, "max": 6612.61}, "FMC": {"count": 363, "mean": 16.74, "std": 16.08, "min": 1.0, "max": 127.0}, "MP10": {"count": 40696, "mean": 27.67, "std": 20.6, "min": 0.0, "max": 194.0}, "MP2.5": {"count": 37407, "mean": 16.01, "std": 13.05, "min": 0.0, "max": 111.0}, "NO": {"count": 8228, "mean": 32.18, "std": 61.48, "min": 0.0, "max": 524.0}, "NO2": {"count": 53026, "mean": 36.42, "std": 22.22, "min": 0.0, "max": 235.0}, "O3": {"count": 56435, "mean": 29.08, "std": 29.07, "min": 0.0, "max": 262.0}, "PTS": {"count": 121, "mean": 48.4, "std": 28.76, "min": 13.0, "max": 150.0}, "SO2": {"count": 71, "mean": 4.13, "std": 1.78, "min": 3.0, "max": 10.0}}}, {"codigo": "SP51", "nome": "Piracicaba", "nome_cetesb": "Piracicaba", "tipo": "Automatica", "ugrhi": "5", "municipio": "Piracicaba", "endereco": "Av. Monsenhor Martinho Salgot, 560, Vila Areão - Piracicaba (Campus FUMEP)", "lat": -22.701222, "lon": -47.649653, "fuso": "23K", "utm_x": 227797, "utm_y": 7487124, "obs": "Início da operação: 02/09/2008", "pollutants": {"MP10": {"count": 48245, "mean": 34.62, "std": 25.81, "min": 0.0, "max": 459.0}, "MP2.5": {"count": 56516, "mean": 13.26, "std": 9.93, "min": 0.0, "max": 236.0}, "NO": {"count": 7124, "mean": 3.07, "std": 6.32, "min": 0.0, "max": 110.0}, "NO2": {"count": 48173, "mean": 15.7, "std": 10.82, "min": 0.0, "max": 115.0}, "O3": {"count": 54303, "mean": 43.28, "std": 33.98, "min": 0.0, "max": 223.0}}}, {"codigo": "SP52", "nome": "Piracicaba - Algodoal", "nome_cetesb": "Piracicaba - Algodoal", "tipo": "Manual", "ugrhi": "5", "municipio": "Piracicaba", "endereco": "Av. Francisco de Souza, 1098, Bairro São Luiz - Piracicaba", "lat": -22.699658, "lon": -47.66337, "fuso": "23K", "utm_x": 226384, "utm_y": 7487272, "obs": "Início da operação: 21/11/2000", "pollutants": {"MP10": {"count": 180, "mean": 34.07, "std": 22.86, "min": 6.0, "max": 159.0}}}, {"codigo": "SP53", "nome": "Presidente Prudente", "nome_cetesb": "Presidente Prudente", "tipo": "Automatica", "ugrhi": "22", "municipio": "Presidente Prudente", "endereco": "Rua Roberto Simonsen, 464, Vila Sta. Helena - Presidente Prudente (UNESP - Laboratório de Climatologia)", "lat": -22.119937, "lon": -51.408777, "fuso": "22K", "utm_x": 457841, "utm_y": 7553841, "obs": "Início da operação: 15/05/2008", "pollutants": {"MP10": {"count": 53757, "mean": 20.87, "std": 15.8, "min": 0.0, "max": 659.0}, "NO": {"count": 6568, "mean": 2.16, "std": 6.57, "min": 0.0, "max": 135.0}, "NO2": {"count": 52882, "mean": 11.28, "std": 12.88, "min": 0.0, "max": 179.0}, "O3": {"count": 57714, "mean": 49.65, "std": 23.9, "min": 0.0, "max": 171.0}}}, {"codigo": "SP79", "nome": "Ribeirão Preto", "nome_cetesb": "Ribeirão Preto", "tipo": "Automatica", "ugrhi": "4", "municipio": "Ribeirão Preto", "endereco": "Rua Felipe Camarão, s/nº, Parque Ecológico Maurílio Biaggi - Ribeirão Preto", "lat": -21.177066, "lon": -47.818988, "fuso": "23K", "utm_x": 207285, "utm_y": 7655653, "obs": "Início de operação: 07/12/2016 (anteriormente Ribeirão Preto-Centro)", "pollutants": {"CO": {"count": 25942, "mean": 461.93, "std": 329.24, "min": 0.0, "max": 4242.05}, "MP10": {"count": 35670, "mean": 33.98, "std": 33.77, "min": 0.0, "max": 818.0}, "MP2.5": {"count": 35162, "mean": 15.19, "std": 15.7, "min": 0.0, "max": 314.0}, "NO": {"count": 5588, "mean": 8.77, "std": 15.69, "min": 0.0, "max": 129.0}, "NO2": {"count": 25971, "mean": 9.49, "std": 7.23, "min": 0.0, "max": 73.0}, "O3": {"count": 26967, "mean": 54.53, "std": 30.65, "min": 0.0, "max": 178.0}}}, {"codigo": "SP120", "nome": "Ribeirão Preto - Campos Elíseos", "nome_cetesb": "Ribeirão Preto - Campos Elíseos", "tipo": "Manual", "ugrhi": "4", "municipio": "Ribeirão Preto", "endereco": "Rua Luiz Gama, 150, Campos Elíseos - Ribeirão Preto", "lat": -21.165426, "lon": -47.813801, "fuso": "23K", "utm_x": 207801, "utm_y": 7656952, "obs": "Início: 03/01/1986; Desativada em 31/12/2016", "pollutants": {"MP10": {"count": 27, "mean": 45.37, "std": 17.26, "min": 19.0, "max": 92.0}}}, {"codigo": "SP54", "nome": "Rio Claro - Jardim Guanabara", "nome_cetesb": "Rio Claro - Jardim Guanabara", "tipo": "Manual", "ugrhi": "-", "municipio": "Rio Claro", "endereco": "-", "lat": null, "lon": null, "fuso": "23K", "utm_x": null, "utm_y": null, "obs": "-", "pollutants": {"MP10": {"count": 24500, "mean": 40.32, "std": 33.37, "min": 0.0, "max": 558.0}, "MP2.5": {"count": 19688, "mean": 18.1, "std": 15.32, "min": 0.0, "max": 312.0}, "O3": {"count": 22886, "mean": 43.89, "std": 32.44, "min": 0.0, "max": 192.0}}}, {"codigo": "SP56", "nome": "Salto - Centro", "nome_cetesb": "Salto - Centro", "tipo": "Manual", "ugrhi": "5", "municipio": "Salto", "endereco": "Rua José Revel, s/n, Centro - Salto (Centro de Educação e Cultura)", "lat": -23.204985, "lon": -47.290008, "fuso": "23K", "utm_x": 265629, "utm_y": 7431942, "obs": "Novo endereço a partir de mar/2010; Anterior: Rua Prudente de Moraes, 580", "pollutants": {"FMC": {"count": 279, "mean": 12.35, "std": 6.22, "min": 2.0, "max": 39.0}, "SO2": {"count": 63, "mean": 4.14, "std": 1.48, "min": 3.0, "max": 8.0}}}, {"codigo": "SP57", "nome": "Santa Gertrudes", "nome_cetesb": "Santa Gertrudes", "tipo": "Automatica", "ugrhi": "5", "municipio": "Santa Gertrudes", "endereco": "Rua Nossa Senhora Aparecida, 320, Jardim Luciana - Santa Gertrudes (EMEI 'Lygia Buschinelli')", "lat": -22.459955, "lon": -47.536298, "fuso": "23K", "utm_x": 238993, "utm_y": 7514053, "obs": "Início da operação: 24/07/2014", "pollutants": {"MP10": {"count": 58534, "mean": 52.65, "std": 45.52, "min": 0.0, "max": 696.0}, "MP2.5": {"count": 26057, "mean": 17.54, "std": 14.17, "min": 0.0, "max": 209.0}, "NO2": {"count": 31768, "mean": 34.73, "std": 19.88, "min": 0.0, "max": 149.0}}}, {"codigo": "SP58", "nome": "Santa Gertrudes - Jd. Luciana", "nome_cetesb": "Santa Gertrudes - Jd. Luciana", "tipo": "Manual", "ugrhi": "5", "municipio": "Santa Gertrudes", "endereco": "Av. Hum nº 780, Jardim Luciana - Santa Gertrudes", "lat": -22.459633, "lon": -47.533272, "fuso": "23K", "utm_x": 239304, "utm_y": 7514094, "obs": "Início da operação: 22/06/2007", "pollutants": {"MP10": {"count": 353, "mean": 75.72, "std": 41.74, "min": 6.0, "max": 248.0}}}, {"codigo": "SP59", "nome": "Santana", "nome_cetesb": "Santana", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Av. Santos Dumont, 1019, Santana - São Paulo (Parque de Material Aeronáutico)", "lat": -23.505993, "lon": -46.62896, "fuso": "23K", "utm_x": 333675, "utm_y": 7399522, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"MP10": {"count": 16083, "mean": 29.3, "std": 21.08, "min": 0.0, "max": 270.0}, "MP2.5": {"count": 37066, "mean": 16.57, "std": 13.19, "min": 0.0, "max": 234.0}, "O3": {"count": 57135, "mean": 37.2, "std": 34.61, "min": 0.0, "max": 380.0}}}, {"codigo": "SP60", "nome": "Santo Amaro", "nome_cetesb": "Santo Amaro", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Rua Padre José Maria 555, acesso pela Rua Humboldt, Santo Amaro - São Paulo (Centro Educacional e Esportivo Mun. Joerg Brüder)", "lat": -23.654977, "lon": -46.709998, "fuso": "23K", "utm_x": 325596, "utm_y": 7382927, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 46759, "mean": 697.33, "std": 490.16, "min": 0.0, "max": 5115.41}, "MP10": {"count": 53730, "mean": 25.39, "std": 19.64, "min": 0.0, "max": 209.0}, "MP2.5": {"count": 51, "mean": 12.02, "std": 9.69, "min": 2.0, "max": 46.0}, "O3": {"count": 49924, "mean": 31.67, "std": 30.3, "min": 0.0, "max": 243.0}, "PTS": {"count": 230, "mean": 43.49, "std": 27.87, "min": 6.0, "max": 152.0}}}, {"codigo": "SP61", "nome": "Santo André - Capuava", "nome_cetesb": "Santo André - Capuava", "tipo": "Automatica", "ugrhi": "6", "municipio": "Santo André", "endereco": "Rua Manágua, 2, Parque Capuava - Santo André (Posto de Puericultura do Alto de Capuava)", "lat": -23.639804, "lon": -46.491637, "fuso": "23K", "utm_x": 347853, "utm_y": 7384857, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"MP10": {"count": 57171, "mean": 28.17, "std": 22.01, "min": 0.0, "max": 579.0}, "MP2.5": {"count": 56, "mean": 14.38, "std": 8.63, "min": 4.0, "max": 39.0}, "NO2": {"count": 21712, "mean": 26.75, "std": 19.14, "min": 0.0, "max": 214.0}, "O3": {"count": 53270, "mean": 39.34, "std": 29.84, "min": 0.0, "max": 280.0}, "PTS": {"count": 184, "mean": 43.76, "std": 23.46, "min": 7.0, "max": 125.0}, "SO2": {"count": 49624, "mean": 2.75, "std": 3.5, "min": 0.0, "max": 72.0}}}, {"codigo": "SP62", "nome": "Santo André - Paço Municipal", "nome_cetesb": "Santo André - Paço Municipal", "tipo": "Automatica", "ugrhi": "6", "municipio": "Santo André", "endereco": "Praça IV Centenário, s/nº, Centro - Santo André (Paço Municipal)", "lat": -23.656994, "lon": -46.530919, "fuso": "23K", "utm_x": 343866, "utm_y": 7382911, "obs": "Início da operação: 23/06/2009; Desativada em: 20/02/2020", "pollutants": {"CO": {"count": 28587, "mean": 866.27, "std": 585.27, "min": 0.0, "max": 9482.23}, "MP10": {"count": 30093, "mean": 28.62, "std": 21.09, "min": 0.0, "max": 550.0}}}, {"codigo": "SP63", "nome": "Santos", "nome_cetesb": "Santos", "tipo": "Automatica", "ugrhi": "7", "municipio": "Santos", "endereco": "Rua Dr. Oswaldo Cruz, 197, Boqueirão - Santos (Hospital Guilherme Álvaro)", "lat": -23.963057, "lon": -46.32117, "fuso": "23K", "utm_x": 365576, "utm_y": 7349234, "obs": "Início da operação: 07/06/2011", "pollutants": {"MP10": {"count": 52723, "mean": 19.87, "std": 15.57, "min": 0.0, "max": 474.0}, "NO": {"count": 8106, "mean": 16.75, "std": 30.74, "min": 0.0, "max": 233.0}, "NO2": {"count": 31869, "mean": 26.59, "std": 18.26, "min": 0.0, "max": 200.0}, "O3": {"count": 49532, "mean": 26.2, "std": 23.73, "min": 0.0, "max": 213.0}}}, {"codigo": "SP64", "nome": "Santos - Ponta da Praia", "nome_cetesb": "Santos - Ponta da Praia", "tipo": "Automatica", "ugrhi": "7", "municipio": "Santos", "endereco": "Praça Engº José Rebouças, s/nº, Ponta da Praia - Santos", "lat": -23.981295, "lon": -46.30051, "fuso": "23K", "utm_x": 367697, "utm_y": 7347234, "obs": "Início da operação: 18/11/2011", "pollutants": {"MP10": {"count": 58657, "mean": 27.41, "std": 23.32, "min": 0.0, "max": 578.0}, "MP2.5": {"count": 58648, "mean": 14.12, "std": 11.01, "min": 0.0, "max": 159.0}, "NO": {"count": 7892, "mean": 26.09, "std": 42.97, "min": 0.0, "max": 347.0}, "NO2": {"count": 54205, "mean": 27.82, "std": 19.04, "min": 0.0, "max": 153.0}, "O3": {"count": 53841, "mean": 26.41, "std": 22.61, "min": 0.0, "max": 208.0}, "SO2": {"count": 54654, "mean": 9.31, "std": 13.3, "min": 0.0, "max": 338.0}}}, {"codigo": "SP73", "nome": "Sorocaba", "nome_cetesb": "Sorocaba", "tipo": "Automatica", "ugrhi": "10", "municipio": "Sorocaba", "endereco": "Rua Nhonhô Pires, 260, Vila Lucy - Sorocaba (Escola Estadual Monsenhor João Soares)", "lat": -23.502427, "lon": -47.47903, "fuso": "23K", "utm_x": 246841, "utm_y": 7398675, "obs": "Início da operação: 28/01/2000", "pollutants": {"MP10": {"count": 55925, "mean": 23.9, "std": 20.79, "min": 0.0, "max": 517.0}, "NO": {"count": 6938, "mean": 6.22, "std": 14.37, "min": 0.0, "max": 162.0}, "NO2": {"count": 51371, "mean": 18.28, "std": 15.59, "min": 0.0, "max": 130.0}, "O3": {"count": 53998, "mean": 39.76, "std": 28.58, "min": 0.0, "max": 179.0}}}, {"codigo": "SP74", "nome": "Sorocaba - Centro", "nome_cetesb": "Sorocaba - Centro", "tipo": "Manual", "ugrhi": "10", "municipio": "Sorocaba", "endereco": "Praça Dr. Arthur Fajardo, s/nº, Centro - Sorocaba", "lat": -23.500529, "lon": -47.453496, "fuso": "23K", "utm_x": 249446, "utm_y": 7398930, "obs": "Início da operação: 02/07/1986", "pollutants": {"FMC": {"count": 342, "mean": 17.42, "std": 9.75, "min": 3.0, "max": 62.0}}}, {"codigo": "SP143", "nome": "São Bernardo do Campo", "nome_cetesb": "São Bernardo do Campo", "tipo": "Manual", "ugrhi": "6", "municipio": "São Bernardo do Campo", "endereco": "Rua Xavier de Toledo, 521, Vila Paulicéia - São Bernardo do Campo (E. M. de Ensino Básico Arlindo Ferreira)", "lat": -23.671354, "lon": -46.584668, "fuso": "23K", "utm_x": 338401, "utm_y": 7381261, "obs": "Início: 06/12/2008; Anterior: Rua Casper Líbero, 340", "pollutants": {"PTS": {"count": 224, "mean": 51.33, "std": 28.37, "min": 6.0, "max": 151.0}}}, {"codigo": "SP65", "nome": "São Bernardo do Campo - Centro", "nome_cetesb": "São Bernardo do Campo - Centro", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Bernardo do Campo", "endereco": "Rua dos Vianas, 625, Vila Baeta Neves - São Bernardo do Campo", "lat": -23.698671, "lon": -46.546232, "fuso": "23K", "utm_x": 342354, "utm_y": 7378279, "obs": "Início da operação: 02/04/2014", "pollutants": {"CO": {"count": 55100, "mean": 606.42, "std": 461.75, "min": 0.0, "max": 7610.73}, "MP2.5": {"count": 57767, "mean": 15.93, "std": 12.66, "min": 0.0, "max": 201.0}, "NO": {"count": 8088, "mean": 5.52, "std": 13.08, "min": 0.0, "max": 223.0}, "NO2": {"count": 54387, "mean": 26.63, "std": 19.95, "min": 0.0, "max": 213.0}, "O3": {"count": 56879, "mean": 44.57, "std": 32.7, "min": 0.0, "max": 291.0}}}, {"codigo": "SP66", "nome": "São Bernardo do Campo - Paulicéia", "nome_cetesb": "São Bernardo do Campo - Paulicéia", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Bernardo do Campo", "endereco": "Rua Xavier de Toledo, 521, Vila Paulicéia - São Bernardo do Campo (E.M. de Ensino Básico Arlindo Ferreira)", "lat": -23.671354, "lon": -46.584668, "fuso": "23K", "utm_x": 338401, "utm_y": 7381261, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"MP10": {"count": 60346, "mean": 26.01, "std": 20.04, "min": 0.0, "max": 285.0}}}, {"codigo": "SP67", "nome": "São Caetano do Sul", "nome_cetesb": "São Caetano do Sul", "tipo": "Automatica", "ugrhi": "6", "municipio": "São Caetano do Sul", "endereco": "Av. Presidente Kennedy, 700, Santa Paula - São Caetano do Sul (Hospital Municipal de Emergências Albert Sabin)", "lat": -23.618443, "lon": -46.556354, "fuso": "23K", "utm_x": 341225, "utm_y": 7387152, "obs": "De 1981 até 12/12/2007: R. Aurélia, nº 257 - Vila Paula; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 47045, "mean": 653.64, "std": 640.52, "min": 0.0, "max": 9981.29}, "MP10": {"count": 47345, "mean": 31.41, "std": 24.48, "min": 0.0, "max": 301.0}, "MP2.5": {"count": 22445, "mean": 16.61, "std": 14.31, "min": 0.0, "max": 193.0}, "NO": {"count": 7680, "mean": 15.03, "std": 27.55, "min": 0.0, "max": 356.0}, "NO2": {"count": 47298, "mean": 34.65, "std": 22.17, "min": 0.0, "max": 250.0}, "O3": {"count": 48249, "mean": 38.33, "std": 31.91, "min": 0.0, "max": 363.0}, "SO2": {"count": 43742, "mean": 2.93, "std": 3.74, "min": 0.0, "max": 63.0}}}, {"codigo": "SP68", "nome": "São Carlos - Centro", "nome_cetesb": "São Carlos - Centro", "tipo": "Manual", "ugrhi": "13", "municipio": "São Carlos", "endereco": "Av. São Carlos, s/nº, Praça dos Voluntários da Pátria, Centro - São Carlos", "lat": -22.020177, "lon": -53.89042, "fuso": "22K", "utm_x": 201599, "utm_y": 7562116, "obs": "Início: 03/01/1986; Desativada: 01/01/2020", "pollutants": {"FMC": {"count": 246, "mean": 11.54, "std": 6.4, "min": 2.0, "max": 39.0}}}, {"codigo": "SP69", "nome": "São José do Rio Preto", "nome_cetesb": "São José do Rio Preto", "tipo": "Automatica", "ugrhi": "15", "municipio": "São José do Rio Preto", "endereco": "Rua Jales, 3055, Eldorado - São José do Rio Preto (Campo Atletismo Eldorado)", "lat": -20.784689, "lon": -49.398278, "fuso": "22K", "utm_x": 666719, "utm_y": 7700854, "obs": "Início da operação: 23/04/2008", "pollutants": {"MP10": {"count": 59027, "mean": 33.37, "std": 25.98, "min": 0.0, "max": 569.0}, "MP2.5": {"count": 56532, "mean": 15.37, "std": 13.41, "min": 0.0, "max": 390.0}, "NO": {"count": 7729, "mean": 6.83, "std": 15.9, "min": 0.0, "max": 267.0}, "NO2": {"count": 49998, "mean": 19.71, "std": 18.16, "min": 0.0, "max": 150.0}, "O3": {"count": 44921, "mean": 39.05, "std": 28.41, "min": 0.0, "max": 193.0}}}, {"codigo": "SP70", "nome": "São José dos Campos", "nome_cetesb": "São José dos Campos", "tipo": "Automatica", "ugrhi": "2", "municipio": "São José dos Campos", "endereco": "Rua Ana Gonçalves Cunha, 40, Monte Castelo - São José dos Campos (Obra Social Célio Lemos)", "lat": -23.187887, "lon": -45.871198, "fuso": "23K", "utm_x": 410840, "utm_y": 7435414, "obs": "Início de operação: 03/05/2000", "pollutants": {"MP10": {"count": 57811, "mean": 22.68, "std": 18.49, "min": 0.0, "max": 378.0}, "NO": {"count": 8141, "mean": 9.7, "std": 20.6, "min": 0.0, "max": 348.0}, "NO2": {"count": 52562, "mean": 20.03, "std": 12.7, "min": 0.0, "max": 128.0}, "O3": {"count": 54797, "mean": 37.29, "std": 27.52, "min": 0.0, "max": 221.0}, "SO2": {"count": 52925, "mean": 1.69, "std": 3.2, "min": 0.0, "max": 192.0}}}, {"codigo": "SP71", "nome": "São José dos Campos - Jardim Satélite", "nome_cetesb": "São José dos Campos", "tipo": "Automatica", "ugrhi": "2", "municipio": "São José dos Campos", "endereco": "Rua Ana Gonçalves Cunha, 40, Monte Castelo - São José dos Campos (Obra Social Célio Lemos)", "lat": -23.187887, "lon": -45.871198, "fuso": "23K", "utm_x": 410840, "utm_y": 7435414, "obs": "Início de operação: 03/05/2000", "pollutants": {"CO": {"count": 48575, "mean": 366.39, "std": 324.83, "min": 0.0, "max": 4741.11}, "MP10": {"count": 52021, "mean": 21.22, "std": 16.13, "min": 0.0, "max": 330.0}, "MP2.5": {"count": 46432, "mean": 11.7, "std": 9.23, "min": 0.0, "max": 127.0}, "NO": {"count": 8050, "mean": 5.67, "std": 15.99, "min": 0.0, "max": 216.0}, "NO2": {"count": 48967, "mean": 17.7, "std": 14.67, "min": 0.0, "max": 133.0}, "O3": {"count": 51360, "mean": 39.3, "std": 27.92, "min": 0.0, "max": 261.0}}}, {"codigo": "SP75", "nome": "Taboão da Serra", "nome_cetesb": "Taboão da Serra", "tipo": "Automatica", "ugrhi": "6", "municipio": "Taboão da Serra", "endereco": "Praça Nicola Vivilechio, 99, Jd. Bom Tempo - Taboão da Serra", "lat": -23.609324, "lon": -46.758294, "fuso": "23K", "utm_x": 320607, "utm_y": 7387923, "obs": "Início da operação: 1981; Qualar a partir de 01/01/1998", "pollutants": {"CO": {"count": 51600, "mean": 1107.19, "std": 826.86, "min": 0.0, "max": 8733.63}, "MP10": {"count": 58246, "mean": 28.69, "std": 23.71, "min": 0.0, "max": 297.0}, "NO": {"count": 8223, "mean": 27.45, "std": 46.02, "min": 0.0, "max": 396.0}, "NO2": {"count": 27820, "mean": 36.32, "std": 20.04, "min": 0.0, "max": 212.0}}}, {"codigo": "SP76", "nome": "Tatuapé", "nome_cetesb": "Tatuapé", "tipo": "Manual", "ugrhi": "6", "municipio": "São Paulo", "endereco": "Av. Celso Garcia, 4142, Tatuapé - São Paulo (Biblioteca Infantil Hans Cristian Andersen)", "lat": -23.53646, "lon": -46.571979, "fuso": "23K", "utm_x": 339531, "utm_y": 7396213, "obs": "Início da operação: 09/01/1989", "pollutants": {"FMC": {"count": 344, "mean": 19.49, "std": 15.53, "min": 1.0, "max": 100.0}, "SO2": {"count": 69, "mean": 3.38, "std": 1.16, "min": 3.0, "max": 10.0}}}, {"codigo": "SP77", "nome": "Tatuí", "nome_cetesb": "Tatuí", "tipo": "Automatica", "ugrhi": "10", "municipio": "Tatuí", "endereco": "Rua Ruy Barbosa, 601, Jd. N. Sra. de Fátima - Tatuí (Escola de Enfermagem Dr. Gualter Nunes)", "lat": -23.360752, "lon": -47.870799, "fuso": "23K", "utm_x": 206499, "utm_y": 7413627, "obs": "Início da operação: 01/01/2011", "pollutants": {"MP10": {"count": 59783, "mean": 20.14, "std": 18.08, "min": 0.0, "max": 369.0}, "NO": {"count": 7880, "mean": 1.17, "std": 2.45, "min": 0.0, "max": 50.0}, "NO2": {"count": 52992, "mean": 8.62, "std": 9.73, "min": 0.0, "max": 119.0}, "O3": {"count": 57159, "mean": 45.93, "std": 25.26, "min": 0.0, "max": 173.0}}}, {"codigo": "SP78", "nome": "Taubaté", "nome_cetesb": "Taubaté", "tipo": "Automatica", "ugrhi": "2", "municipio": "Taubaté", "endereco": "Rua Espanha, 386, Jardim das Nações - Taubaté", "lat": -23.032351, "lon": -45.575805, "fuso": "23K", "utm_x": 441004, "utm_y": 7452783, "obs": "Início da operação: 01/10/2015", "pollutants": {"CO": {"count": 26134, "mean": 467.19, "std": 244.54, "min": 0.0, "max": 4117.28}, "MP10": {"count": 53695, "mean": 21.03, "std": 16.15, "min": 0.0, "max": 357.0}, "MP2.5": {"count": 48805, "mean": 12.0, "std": 10.0, "min": 0.0, "max": 262.0}, "NO": {"count": 8175, "mean": 2.35, "std": 7.56, "min": 0.0, "max": 135.0}, "NO2": {"count": 49609, "mean": 15.24, "std": 11.78, "min": 0.0, "max": 115.0}, "O3": {"count": 51464, "mean": 42.38, "std": 28.19, "min": 0.0, "max": 183.0}, "SO2": {"count": 21387, "mean": 1.05, "std": 0.89, "min": 0.0, "max": 20.0}}}, {"codigo": "SP132", "nome": "Taubaté - Centro", "nome_cetesb": "Taubaté - Centro", "tipo": "Manual", "ugrhi": "2", "municipio": "Taubaté", "endereco": "Praça Santa Terezinha, s/nº, Centro - Taubaté", "lat": -23.030558, "lon": -45.561909, "fuso": "23K", "utm_x": 442427, "utm_y": 7452987, "obs": "Início: 15/04/1986; Desativada em 31/12/2016", "pollutants": {"FMC": {"count": 89, "mean": 9.88, "std": 5.53, "min": 2.0, "max": 29.0}}}], "annual_trends": {"CO": [{"year": "2015", "mean": 872.61, "count": 141711}, {"year": "2016", "mean": 719.43, "count": 145320}, {"year": "2017", "mean": 686.58, "count": 133290}, {"year": "2018", "mean": 711.19, "count": 136901}, {"year": "2019", "mean": 724.01, "count": 124365}, {"year": "2020", "mean": 636.33, "count": 113636}, {"year": "2021", "mean": 591.28, "count": 103833}], "FMC": [{"year": "2015", "mean": 18.3, "count": 724}, {"year": "2016", "mean": 17.99, "count": 697}, {"year": "2017", "mean": 17.47, "count": 501}, {"year": "2018", "mean": 17.57, "count": 553}, {"year": "2019", "mean": 14.29, "count": 515}, {"year": "2020", "mean": 13.45, "count": 321}, {"year": "2021", "mean": 12.06, "count": 368}], "MP10": [{"year": "2015", "mean": 31.66, "count": 398099}, {"year": "2016", "mean": 29.97, "count": 412388}, {"year": "2017", "mean": 28.61, "count": 427305}, {"year": "2018", "mean": 28.56, "count": 416693}, {"year": "2019", "mean": 28.59, "count": 424021}, {"year": "2020", "mean": 28.51, "count": 402295}, {"year": "2021", "mean": 28.65, "count": 402415}], "MP2.5": [{"year": "2015", "mean": 16.87, "count": 97513}, {"year": "2016", "mean": 15.98, "count": 113406}, {"year": "2017", "mean": 15.97, "count": 157202}, {"year": "2018", "mean": 16.25, "count": 192832}, {"year": "2019", "mean": 15.88, "count": 227264}, {"year": "2020", "mean": 14.87, "count": 217977}, {"year": "2021", "mean": 15.31, "count": 218393}], "NO": [{"year": "2017", "mean": 15.1, "count": 347840}], "NO2": [{"year": "2015", "mean": 29.12, "count": 296858}, {"year": "2016", "mean": 26.23, "count": 320116}, {"year": "2017", "mean": 26.32, "count": 347830}, {"year": "2018", "mean": 26.16, "count": 362761}, {"year": "2019", "mean": 24.67, "count": 306946}, {"year": "2020", "mean": 23.42, "count": 271973}, {"year": "2021", "mean": 23.17, "count": 270330}], "O3": [{"year": "2015", "mean": 37.7, "count": 341589}, {"year": "2016", "mean": 37.28, "count": 369670}, {"year": "2017", "mean": 39.18, "count": 383327}, {"year": "2018", "mean": 39.38, "count": 399117}, {"year": "2019", "mean": 41.26, "count": 408827}, {"year": "2020", "mean": 42.37, "count": 383101}, {"year": "2021", "mean": 41.67, "count": 361677}], "PTS": [{"year": "2015", "mean": 89.39, "count": 297}, {"year": "2016", "mean": 82.01, "count": 268}, {"year": "2017", "mean": 72.59, "count": 213}, {"year": "2018", "mean": 68.88, "count": 291}, {"year": "2019", "mean": 63.82, "count": 272}, {"year": "2020", "mean": 56.94, "count": 117}, {"year": "2021", "mean": 63.97, "count": 252}], "SO2": [{"year": "2015", "mean": 5.95, "count": 98904}, {"year": "2016", "mean": 4.66, "count": 119755}, {"year": "2017", "mean": 4.84, "count": 128876}, {"year": "2018", "mean": 4.52, "count": 120889}, {"year": "2019", "mean": 4.34, "count": 112553}, {"year": "2020", "mean": 3.48, "count": 112415}, {"year": "2021", "mean": 3.32, "count": 102913}]}, "regional_trends": {"RMSP (Grande São Paulo)": {"CO": [{"year": "2015", "mean": 888.97}, {"year": "2016", "mean": 741.94}, {"year": "2017", "mean": 708.39}, {"year": "2018", "mean": 772.19}, {"year": "2019", "mean": 770.94}, {"year": "2020", "mean": 649.37}, {"year": "2021", "mean": 623.36}], "FMC": [{"year": "2015", "mean": 25.87}, {"year": "2016", "mean": 25.0}, {"year": "2017", "mean": 20.29}, {"year": "2018", "mean": 19.8}, {"year": "2019", "mean": 15.05}, {"year": "2020", "mean": 13.79}, {"year": "2021", "mean": 13.1}], "MP10": [{"year": "2015", "mean": 30.54}, {"year": "2016", "mean": 29.12}, {"year": "2017", "mean": 28.29}, {"year": "2018", "mean": 29.05}, {"year": "2019", "mean": 28.9}, {"year": "2020", "mean": 27.4}, {"year": "2021", "mean": 27.43}], "MP2.5": [{"year": "2015", "mean": 18.07}, {"year": "2016", "mean": 16.93}, {"year": "2017", "mean": 16.94}, {"year": "2018", "mean": 17.56}, {"year": "2019", "mean": 16.93}, {"year": "2020", "mean": 15.45}, {"year": "2021", "mean": 15.71}], "NO": [{"year": "2017", "mean": 20.37}], "NO2": [{"year": "2015", "mean": 37.63}, {"year": "2016", "mean": 33.99}, {"year": "2017", "mean": 34.46}, {"year": "2018", "mean": 33.88}, {"year": "2019", "mean": 34.48}, {"year": "2020", "mean": 30.44}, {"year": "2021", "mean": 31.61}], "O3": [{"year": "2015", "mean": 36.49}, {"year": "2016", "mean": 36.21}, {"year": "2017", "mean": 37.57}, {"year": "2018", "mean": 37.19}, {"year": "2019", "mean": 39.71}, {"year": "2020", "mean": 42.13}, {"year": "2021", "mean": 42.02}], "PTS": [{"year": "2015", "mean": 66.57}, {"year": "2016", "mean": 58.51}, {"year": "2017", "mean": 52.59}, {"year": "2018", "mean": 53.47}, {"year": "2019", "mean": 48.94}, {"year": "2020", "mean": 50.1}, {"year": "2021", "mean": 49.36}], "SO2": [{"year": "2015", "mean": 3.01}, {"year": "2016", "mean": 2.53}, {"year": "2017", "mean": 2.75}, {"year": "2018", "mean": 2.39}, {"year": "2019", "mean": 2.09}, {"year": "2020", "mean": 1.89}, {"year": "2021", "mean": 2.11}]}, "Baixada Santista": {"CO": [], "FMC": [], "MP10": [{"year": "2015", "mean": 49.81}, {"year": "2016", "mean": 39.52}, {"year": "2017", "mean": 35.27}, {"year": "2018", "mean": 32.83}, {"year": "2019", "mean": 34.5}, {"year": "2020", "mean": 35.93}, {"year": "2021", "mean": 34.61}], "MP2.5": [{"year": "2015", "mean": 16.02}, {"year": "2016", "mean": 14.64}, {"year": "2017", "mean": 15.43}, {"year": "2018", "mean": 14.31}, {"year": "2019", "mean": 14.41}, {"year": "2020", "mean": 12.4}, {"year": "2021", "mean": 11.63}], "NO": [{"year": "2017", "mean": 36.83}], "NO2": [{"year": "2015", "mean": 35.98}, {"year": "2016", "mean": 32.01}, {"year": "2017", "mean": 32.62}, {"year": "2018", "mean": 35.33}, {"year": "2019", "mean": 36.72}, {"year": "2020", "mean": 35.37}, {"year": "2021", "mean": 33.78}], "O3": [{"year": "2015", "mean": 26.17}, {"year": "2016", "mean": 24.92}, {"year": "2017", "mean": 25.26}, {"year": "2018", "mean": 23.9}, {"year": "2019", "mean": 24.77}, {"year": "2020", "mean": 25.92}, {"year": "2021", "mean": 22.91}], "PTS": [{"year": "2015", "mean": 249.7}, {"year": "2016", "mean": 233.44}, {"year": "2017", "mean": 164.68}, {"year": "2018", "mean": 193.59}, {"year": "2019", "mean": 179.45}, {"year": "2020", "mean": 210.2}, {"year": "2021", "mean": 176.31}], "SO2": [{"year": "2015", "mean": 12.3}, {"year": "2016", "mean": 9.78}, {"year": "2017", "mean": 11.45}, {"year": "2018", "mean": 10.65}, {"year": "2019", "mean": 8.95}, {"year": "2020", "mean": 6.72}, {"year": "2021", "mean": 5.2}]}, "Vale do Paraíba / Litoral Norte": {"CO": [{"year": "2015", "mean": 476.28}, {"year": "2016", "mean": 477.48}, {"year": "2017", "mean": 469.46}, {"year": "2018", "mean": 451.4}, {"year": "2019", "mean": 265.34}, {"year": "2020", "mean": 285.75}, {"year": "2021", "mean": 176.45}], "FMC": [{"year": "2015", "mean": 9.64}, {"year": "2016", "mean": 10.11}], "MP10": [{"year": "2015", "mean": 21.41}, {"year": "2016", "mean": 23.78}, {"year": "2017", "mean": 21.57}, {"year": "2018", "mean": 21.28}, {"year": "2019", "mean": 20.62}, {"year": "2020", "mean": 21.03}, {"year": "2021", "mean": 20.4}], "MP2.5": [{"year": "2015", "mean": 11.85}, {"year": "2016", "mean": 13.6}, {"year": "2017", "mean": 12.44}, {"year": "2018", "mean": 11.81}, {"year": "2019", "mean": 10.78}, {"year": "2020", "mean": 11.29}, {"year": "2021", "mean": 11.46}], "NO": [{"year": "2017", "mean": 5.62}], "NO2": [{"year": "2015", "mean": 18.37}, {"year": "2016", "mean": 18.02}, {"year": "2017", "mean": 16.79}, {"year": "2018", "mean": 15.96}, {"year": "2019", "mean": 14.69}, {"year": "2020", "mean": 15.45}, {"year": "2021", "mean": 14.66}], "O3": [{"year": "2015", "mean": 35.89}, {"year": "2016", "mean": 36.93}, {"year": "2017", "mean": 39.69}, {"year": "2018", "mean": 39.72}, {"year": "2019", "mean": 40.64}, {"year": "2020", "mean": 40.62}, {"year": "2021", "mean": 38.65}], "PTS": [], "SO2": [{"year": "2015", "mean": 1.59}, {"year": "2016", "mean": 1.19}, {"year": "2017", "mean": 1.42}, {"year": "2018", "mean": 1.41}, {"year": "2019", "mean": 1.59}, {"year": "2020", "mean": 2.02}, {"year": "2021", "mean": 1.7}]}, "Interior": {"CO": [{"year": "2015", "mean": 932.27}, {"year": "2016", "mean": 873.58}, {"year": "2017", "mean": 809.53}, {"year": "2018", "mean": 537.4}, {"year": "2019", "mean": 623.74}, {"year": "2020", "mean": 740.2}, {"year": "2021", "mean": 633.1}], "FMC": [{"year": "2015", "mean": 12.92}, {"year": "2016", "mean": 13.01}, {"year": "2017", "mean": 14.47}, {"year": "2018", "mean": 14.62}, {"year": "2019", "mean": 13.48}, {"year": "2020", "mean": 12.94}, {"year": "2021", "mean": 10.03}], "MP10": [{"year": "2015", "mean": 29.5}, {"year": "2016", "mean": 29.48}, {"year": "2017", "mean": 28.78}, {"year": "2018", "mean": 28.36}, {"year": "2019", "mean": 28.75}, {"year": "2020", "mean": 29.44}, {"year": "2021", "mean": 30.21}], "MP2.5": [{"year": "2015", "mean": 14.75}, {"year": "2016", "mean": 15.5}, {"year": "2017", "mean": 14.69}, {"year": "2018", "mean": 14.68}, {"year": "2019", "mean": 15.94}, {"year": "2020", "mean": 14.93}, {"year": "2021", "mean": 15.94}], "NO": [{"year": "2017", "mean": 4.62}], "NO2": [{"year": "2015", "mean": 17.74}, {"year": "2016", "mean": 18.16}, {"year": "2017", "mean": 17.01}, {"year": "2018", "mean": 17.26}, {"year": "2019", "mean": 17.08}, {"year": "2020", "mean": 16.15}, {"year": "2021", "mean": 16.39}], "O3": [{"year": "2015", "mean": 42.33}, {"year": "2016", "mean": 41.32}, {"year": "2017", "mean": 44.35}, {"year": "2018", "mean": 44.91}, {"year": "2019", "mean": 46.46}, {"year": "2020", "mean": 46.28}, {"year": "2021", "mean": 45.51}], "PTS": [], "SO2": [{"year": "2015", "mean": 5.48}, {"year": "2016", "mean": 5.4}, {"year": "2017", "mean": 4.93}, {"year": "2018", "mean": 5.06}, {"year": "2019", "mean": 5.12}, {"year": "2020", "mean": 3.9}, {"year": "2021", "mean": 4.3}]}}, "seasonality": {"CO": [{"month": "01", "mean": 630.2}, {"month": "02", "mean": 650.38}, {"month": "03", "mean": 661.93}, {"month": "04", "mean": 612.95}, {"month": "05", "mean": 734.08}, {"month": "06", "mean": 932.4}, {"month": "07", "mean": 914.68}, {"month": "08", "mean": 821.21}, {"month": "09", "mean": 745.05}, {"month": "10", "mean": 642.64}, {"month": "11", "mean": 579.51}, {"month": "12", "mean": 609.3}], "FMC": [{"month": "01", "mean": 14.48}, {"month": "02", "mean": 12.89}, {"month": "03", "mean": 13.55}, {"month": "04", "mean": 14.19}, {"month": "05", "mean": 16.6}, {"month": "06", "mean": 22.96}, {"month": "07", "mean": 21.52}, {"month": "08", "mean": 20.57}, {"month": "09", "mean": 21.35}, {"month": "10", "mean": 13.6}, {"month": "11", "mean": 11.12}, {"month": "12", "mean": 13.34}], "MP10": [{"month": "01", "mean": 21.11}, {"month": "02", "mean": 21.49}, {"month": "03", "mean": 23.29}, {"month": "04", "mean": 28.29}, {"month": "05", "mean": 30.33}, {"month": "06", "mean": 33.48}, {"month": "07", "mean": 41.5}, {"month": "08", "mean": 38.52}, {"month": "09", "mean": 40.73}, {"month": "10", "mean": 27.42}, {"month": "11", "mean": 22.31}, {"month": "12", "mean": 20.8}], "MP2.5": [{"month": "01", "mean": 11.6}, {"month": "02", "mean": 11.21}, {"month": "03", "mean": 12.25}, {"month": "04", "mean": 14.28}, {"month": "05", "mean": 16.99}, {"month": "06", "mean": 18.37}, {"month": "07", "mean": 22.25}, {"month": "08", "mean": 19.78}, {"month": "09", "mean": 22.32}, {"month": "10", "mean": 14.91}, {"month": "11", "mean": 11.83}, {"month": "12", "mean": 11.55}], "NO": [{"month": "01", "mean": 11.06}, {"month": "02", "mean": 12.26}, {"month": "03", "mean": 10.65}, {"month": "04", "mean": 10.59}, {"month": "05", "mean": 18.93}, {"month": "06", "mean": 27.91}, {"month": "07", "mean": 24.71}, {"month": "08", "mean": 21.19}, {"month": "09", "mean": 14.18}, {"month": "10", "mean": 10.65}, {"month": "11", "mean": 9.54}, {"month": "12", "mean": 8.56}], "NO2": [{"month": "01", "mean": 19.85}, {"month": "02", "mean": 21.23}, {"month": "03", "mean": 22.17}, {"month": "04", "mean": 23.3}, {"month": "05", "mean": 27.53}, {"month": "06", "mean": 31.52}, {"month": "07", "mean": 34.63}, {"month": "08", "mean": 32.46}, {"month": "09", "mean": 29.45}, {"month": "10", "mean": 24.13}, {"month": "11", "mean": 20.66}, {"month": "12", "mean": 20.37}], "O3": [{"month": "01", "mean": 42.96}, {"month": "02", "mean": 38.16}, {"month": "03", "mean": 37.51}, {"month": "04", "mean": 38.57}, {"month": "05", "mean": 30.52}, {"month": "06", "mean": 26.71}, {"month": "07", "mean": 33.01}, {"month": "08", "mean": 38.97}, {"month": "09", "mean": 51.28}, {"month": "10", "mean": 50.12}, {"month": "11", "mean": 46.02}, {"month": "12", "mean": 44.99}], "PTS": [{"month": "01", "mean": 63.15}, {"month": "02", "mean": 62.91}, {"month": "03", "mean": 68.53}, {"month": "04", "mean": 75.74}, {"month": "05", "mean": 79.9}, {"month": "06", "mean": 73.19}, {"month": "07", "mean": 94.35}, {"month": "08", "mean": 88.64}, {"month": "09", "mean": 89.56}, {"month": "10", "mean": 55.05}, {"month": "11", "mean": 49.11}, {"month": "12", "mean": 65.08}], "SO2": [{"month": "01", "mean": 4.4}, {"month": "02", "mean": 4.23}, {"month": "03", "mean": 4.24}, {"month": "04", "mean": 4.46}, {"month": "05", "mean": 4.97}, {"month": "06", "mean": 4.99}, {"month": "07", "mean": 5.68}, {"month": "08", "mean": 4.99}, {"month": "09", "mean": 4.39}, {"month": "10", "mean": 3.5}, {"month": "11", "mean": 3.5}, {"month": "12", "mean": 3.79}]}, "diurnal_cycle": {"CO": [{"hour": "01h", "mean": 729.65}, {"hour": "02h", "mean": 645.23}, {"hour": "03h", "mean": 577.17}, {"hour": "04h", "mean": 529.74}, {"hour": "05h", "mean": 534.08}, {"hour": "06h", "mean": 603.79}, {"hour": "07h", "mean": 771.62}, {"hour": "08h", "mean": 900.37}, {"hour": "09h", "mean": 858.43}, {"hour": "10h", "mean": 760.86}, {"hour": "11h", "mean": 683.79}, {"hour": "12h", "mean": 627.14}, {"hour": "13h", "mean": 593.6}, {"hour": "14h", "mean": 575.99}, {"hour": "15h", "mean": 572.35}, {"hour": "16h", "mean": 578.72}, {"hour": "17h", "mean": 613.6}, {"hour": "18h", "mean": 714.49}, {"hour": "19h", "mean": 841.53}, {"hour": "20h", "mean": 864.43}, {"hour": "21h", "mean": 860.33}, {"hour": "22h", "mean": 864.66}, {"hour": "23h", "mean": 840.89}], "FMC": [{"hour": "01h", "mean": 16.41}], "MP10": [{"hour": "01h", "mean": 34.81}, {"hour": "02h", "mean": 34.29}, {"hour": "03h", "mean": 29.94}, {"hour": "04h", "mean": 27.28}, {"hour": "05h", "mean": 26.34}, {"hour": "06h", "mean": 26.37}, {"hour": "07h", "mean": 27.38}, {"hour": "08h", "mean": 28.43}, {"hour": "09h", "mean": 28.61}, {"hour": "10h", "mean": 28.91}, {"hour": "11h", "mean": 27.98}, {"hour": "12h", "mean": 27.11}, {"hour": "13h", "mean": 26.12}, {"hour": "14h", "mean": 25.49}, {"hour": "15h", "mean": 26.34}, {"hour": "16h", "mean": 27.41}, {"hour": "17h", "mean": 28.37}, {"hour": "18h", "mean": 29.61}, {"hour": "19h", "mean": 31.1}, {"hour": "20h", "mean": 32.06}, {"hour": "21h", "mean": 31.93}, {"hour": "22h", "mean": 31.48}, {"hour": "23h", "mean": 31.81}], "MP2.5": [{"hour": "01h", "mean": 18.32}, {"hour": "02h", "mean": 18.67}, {"hour": "03h", "mean": 17.59}, {"hour": "04h", "mean": 16.6}, {"hour": "05h", "mean": 16.1}, {"hour": "06h", "mean": 15.93}, {"hour": "07h", "mean": 15.79}, {"hour": "08h", "mean": 14.96}, {"hour": "09h", "mean": 14.08}, {"hour": "10h", "mean": 14.29}, {"hour": "11h", "mean": 13.92}, {"hour": "12h", "mean": 13.4}, {"hour": "13h", "mean": 13.19}, {"hour": "14h", "mean": 13.12}, {"hour": "15h", "mean": 13.78}, {"hour": "16h", "mean": 14.7}, {"hour": "17h", "mean": 15.29}, {"hour": "18h", "mean": 15.99}, {"hour": "19h", "mean": 15.99}, {"hour": "20h", "mean": 16.17}, {"hour": "21h", "mean": 16.95}, {"hour": "22h", "mean": 17.5}, {"hour": "23h", "mean": 17.89}], "NO": [{"hour": "01h", "mean": 23.65}, {"hour": "02h", "mean": 14.38}, {"hour": "03h", "mean": 13.72}, {"hour": "04h", "mean": 13.67}, {"hour": "05h", "mean": 15.77}, {"hour": "06h", "mean": 20.15}, {"hour": "07h", "mean": 28.81}, {"hour": "08h", "mean": 32.48}, {"hour": "09h", "mean": 25.22}, {"hour": "10h", "mean": 18.01}, {"hour": "11h", "mean": 13.27}, {"hour": "12h", "mean": 10.08}, {"hour": "13h", "mean": 8.34}, {"hour": "14h", "mean": 7.36}, {"hour": "15h", "mean": 7.31}, {"hour": "16h", "mean": 7.41}, {"hour": "17h", "mean": 7.82}, {"hour": "18h", "mean": 8.71}, {"hour": "19h", "mean": 11.22}, {"hour": "20h", "mean": 13.24}, {"hour": "21h", "mean": 14.42}, {"hour": "22h", "mean": 17.54}, {"hour": "23h", "mean": 18.74}], "NO2": [{"hour": "01h", "mean": 31.59}, {"hour": "02h", "mean": 24.23}, {"hour": "03h", "mean": 22.08}, {"hour": "04h", "mean": 20.89}, {"hour": "05h", "mean": 21.18}, {"hour": "06h", "mean": 23.57}, {"hour": "07h", "mean": 27.38}, {"hour": "08h", "mean": 29.37}, {"hour": "09h", "mean": 28.88}, {"hour": "10h", "mean": 26.61}, {"hour": "11h", "mean": 23.75}, {"hour": "12h", "mean": 21.19}, {"hour": "13h", "mean": 19.21}, {"hour": "14h", "mean": 18.17}, {"hour": "15h", "mean": 18.28}, {"hour": "16h", "mean": 19.18}, {"hour": "17h", "mean": 21.32}, {"hour": "18h", "mean": 26.61}, {"hour": "19h", "mean": 33.25}, {"hour": "20h", "mean": 34.98}, {"hour": "21h", "mean": 34.0}, {"hour": "22h", "mean": 33.13}, {"hour": "23h", "mean": 30.96}], "O3": [{"hour": "01h", "mean": 24.36}, {"hour": "02h", "mean": 24.7}, {"hour": "03h", "mean": 24.68}, {"hour": "04h", "mean": 24.16}, {"hour": "05h", "mean": 22.44}, {"hour": "06h", "mean": 21.59}, {"hour": "07h", "mean": 16.45}, {"hour": "08h", "mean": 17.99}, {"hour": "09h", "mean": 25.72}, {"hour": "10h", "mean": 37.02}, {"hour": "11h", "mean": 49.31}, {"hour": "12h", "mean": 60.74}, {"hour": "13h", "mean": 69.34}, {"hour": "14h", "mean": 74.01}, {"hour": "15h", "mean": 74.97}, {"hour": "16h", "mean": 72.2}, {"hour": "17h", "mean": 65.63}, {"hour": "18h", "mean": 54.15}, {"hour": "19h", "mean": 41.14}, {"hour": "20h", "mean": 33.87}, {"hour": "21h", "mean": 30.12}, {"hour": "22h", "mean": 27.44}, {"hour": "23h", "mean": 24.93}], "PTS": [{"hour": "01h", "mean": 72.62}], "SO2": [{"hour": "01h", "mean": 4.24}, {"hour": "02h", "mean": 4.2}, {"hour": "03h", "mean": 4.21}, {"hour": "04h", "mean": 2.9}, {"hour": "05h", "mean": 4.35}, {"hour": "06h", "mean": 4.41}, {"hour": "07h", "mean": 4.85}, {"hour": "08h", "mean": 5.88}, {"hour": "09h", "mean": 7.51}, {"hour": "10h", "mean": 7.98}, {"hour": "11h", "mean": 6.72}, {"hour": "12h", "mean": 5.58}, {"hour": "13h", "mean": 4.46}, {"hour": "14h", "mean": 3.73}, {"hour": "15h", "mean": 3.34}, {"hour": "16h", "mean": 3.14}, {"hour": "17h", "mean": 3.08}, {"hour": "18h", "mean": 3.0}, {"hour": "19h", "mean": 3.09}, {"hour": "20h", "mean": 3.27}, {"hour": "21h", "mean": 3.57}, {"hour": "22h", "mean": 3.83}, {"hour": "23h", "mean": 4.08}]}, "years": ["2015", "2016", "2017", "2018", "2019", "2020", "2021"], "pollutants": ["CO", "FMC", "MP10", "MP2.5", "NO", "NO2", "O3", "PTS", "SO2"]};
+
+        // Navigation Tab Switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+            
+            const targetPanel = document.getElementById(tabId);
+            if (targetPanel) targetPanel.classList.add('active');
+            
+            const activeBtn = Array.from(document.querySelectorAll('.nav-tab')).find(b => b.getAttribute('onclick').includes(tabId));
+            if (activeBtn) activeBtn.classList.add('active');
+
+            if (tabId === 'map-tab' && map) {
+                setTimeout(() => { map.invalidateSize(); }, 200);
+            } else if (tabId === 'timeseries') {
+                setTimeout(() => {
+                    Plotly.Plots.resize('annualTrendPlot');
+                    Plotly.Plots.resize('regionalTrendPlot');
+                }, 200);
+            } else if (tabId === 'cycles') {
+                setTimeout(() => {
+                    Plotly.Plots.resize('diurnalPlot');
+                    Plotly.Plots.resize('seasonalPlot');
+                }, 200);
+            } else if (tabId === 'hotspots') {
+                setTimeout(() => {
+                    Plotly.Plots.resize('hotspotPlot');
+                }, 200);
+            }
+        }
+
+        // Populate Summary Table
+        function renderSummaryTable() {
+            const tbody = document.getElementById('summaryTableBody');
+            tbody.innerHTML = '';
+            reportData.pol_summary.forEach(p => {
+                const conama = reportData.conama_standards[p.poluente] || {};
+                const standardText = conama.standard_annual ? `${conama.standard_annual} ${conama.unit}` : (conama.standard_8h ? `${conama.standard_8h} ${conama.unit} (8h)` : '-');
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${p.poluente}</strong></td>
+                    <td>${p.descricao}</td>
+                    <td>${p.unidade}</td>
+                    <td style="font-family: monospace;">${p.total_registros.toLocaleString('pt-BR')}</td>
+                    <td style="font-family: monospace; font-weight: 700; color: var(--primary);">${p.media.toFixed(2)}</td>
+                    <td style="font-family: monospace; font-weight: 600;">${p.desvio_padrao.toFixed(2)}</td>
+                    <td style="font-family: monospace;">${p.min.toFixed(2)}</td>
+                    <td style="font-family: monospace;">${p.max.toFixed(2)}</td>
+                    <td><span class="badge-tag" style="background: #E2E8F0; color: var(--text-main);">${standardText}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Leaflet Map Initialization
+        let map;
+        let markersLayer = L.layerGroup();
+
+        function initMap() {
+            map = L.map('map').setView([-23.5505, -46.6333], 8);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contribuintes | CETESB'
+            }).addTo(map);
+
+            markersLayer.addTo(map);
+
+            // Add Custom Legend
+            const legend = L.control({ position: 'bottomright' });
+            legend.onAdd = function() {
+                const div = L.DomUtil.create('div', 'map-legend');
+                div.id = 'mapLegendBox';
+                div.innerHTML = `<strong>Legenda de Concentração</strong><br>
+                    <div class="map-legend-item"><span class="legend-color" style="background:#2ECC71;"></span> Baixa / Boa</div>
+                    <div class="map-legend-item"><span class="legend-color" style="background:#F1C40F;"></span> Moderada</div>
+                    <div class="map-legend-item"><span class="legend-color" style="background:#E67E22;"></span> Alerta / Alta</div>
+                    <div class="map-legend-item"><span class="legend-color" style="background:#E74C3C;"></span> Crítica</div>
+                    <div class="map-legend-item"><span class="legend-color" style="background:#95A5A6;"></span> Sem Medição</div>
+                `;
+                return div;
+            };
+            legend.addTo(map);
+
+            updateMapMarkers();
+        }
+
+        function getMarkerColor(pol, val) {
+            if (val === null || val === undefined) return '#95A5A6';
+            if (pol === 'MP10') {
+                if (val < 25) return '#2ECC71';
+                if (val < 40) return '#F1C40F';
+                if (val < 55) return '#E67E22';
+                return '#E74C3C';
+            } else if (pol === 'MP2.5') {
+                if (val < 12) return '#2ECC71';
+                if (val < 20) return '#F1C40F';
+                if (val < 30) return '#E67E22';
+                return '#E74C3C';
+            } else if (pol === 'NO2') {
+                if (val < 25) return '#2ECC71';
+                if (val < 40) return '#F1C40F';
+                if (val < 55) return '#E67E22';
+                return '#E74C3C';
+            } else if (pol === 'O3') {
+                if (val < 35) return '#2ECC71';
+                if (val < 45) return '#F1C40F';
+                if (val < 52) return '#E67E22';
+                return '#E74C3C';
+            } else if (pol === 'CO') {
+                if (val < 600) return '#2ECC71';
+                if (val < 900) return '#F1C40F';
+                if (val < 1200) return '#E67E22';
+                return '#E74C3C';
+            } else if (pol === 'SO2') {
+                if (val < 5) return '#2ECC71';
+                if (val < 10) return '#F1C40F';
+                if (val < 15) return '#E67E22';
+                return '#E74C3C';
+            }
+            return '#3498DB';
+        }
+
+        function updateMapMarkers() {
+            markersLayer.clearLayers();
+            const pol = document.getElementById('mapPollutantSelect').value;
+            const net = document.getElementById('mapNetworkSelect').value;
+            const ugrhi = document.getElementById('mapUgrhiSelect').value;
+
+            reportData.stations.forEach(st => {
+                if (!st.lat || !st.lon) return;
+
+                // Network filter
+                if (net !== 'TODAS' && st.tipo.toLowerCase() !== net.toLowerCase()) return;
+
+                // Ugrhi filter
+                if (ugrhi !== 'TODAS') {
+                    if (ugrhi === 'INTERIOR') {
+                        if (['2', '3', '5', '6', '7'].includes(st.ugrhi)) return;
+                    } else {
+                        if (st.ugrhi !== ugrhi) return;
+                    }
+                }
+
+                const stPolData = st.pollutants[pol];
+                const meanVal = stPolData ? stPolData.mean : null;
+                const stdVal = stPolData ? stPolData.std : null;
+                const maxVal = stPolData ? stPolData.max : null;
+                const countVal = stPolData ? stPolData.count : 0;
+                const color = getMarkerColor(pol, meanVal);
+
+                const radius = meanVal ? Math.max(7, Math.min(18, 7 + (meanVal / 5))) : 6;
+
+                const marker = L.circleMarker([st.lat, st.lon], {
+                    radius: radius,
+                    fillColor: color,
+                    color: '#FFFFFF',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.85
+                });
+
+                // Popup content with Média Histórica e Desvio Padrão
+                const popupContent = `
+                    <div class="popup-card">
+                        <div class="popup-header">
+                            <span class="popup-badge">${st.tipo} • UGRHI ${st.ugrhi}</span>
+                            <h3>${st.nome}</h3>
+                            <small>${st.codigo} — ${st.municipio}</small>
+                        </div>
+                        <div style="padding: 4px;">
+                            <div class="popup-highlight">
+                                <span>📊 Média Histórica (${pol}):</span>
+                                <span style="font-size: 1.05rem;">${meanVal !== null ? meanVal.toFixed(2) + ' µg/m³' : 'N/D'}</span>
+                            </div>
+                            <div class="popup-stat-row">
+                                <span class="popup-stat-label">Desvio Padrão (&sigma;):</span>
+                                <span class="popup-stat-val" style="color: var(--primary);">${stdVal !== null ? '± ' + stdVal.toFixed(2) + ' µg/m³' : 'N/D'}</span>
+                            </div>
+                            <div class="popup-stat-row">
+                                <span class="popup-stat-label">Máximo Histórico:</span>
+                                <span class="popup-stat-val">${maxVal !== null ? maxVal.toFixed(2) + ' µg/m³' : 'N/D'}</span>
+                            </div>
+                            <div class="popup-stat-row">
+                                <span class="popup-stat-label">Total de Medições:</span>
+                                <span class="popup-stat-val">${countVal.toLocaleString('pt-BR')}</span>
+                            </div>
+                            <div class="popup-stat-row" style="margin-top: 6px;">
+                                <span class="popup-stat-label">Coordenadas:</span>
+                                <span style="font-size: 0.75rem; font-family: monospace;">${st.lat.toFixed(5)}, ${st.lon.toFixed(5)}</span>
+                            </div>
+                            <p style="font-size: 0.76rem; color: var(--text-muted); margin-top: 6px; border-top: 1px solid #E2E8F0; padding-top: 4px;">
+                                📍 ${st.endereco || 'Endereço não disponível'}
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+                markersLayer.addLayer(marker);
+            });
+        }
+
+        // Render Plotly Charts
+        function renderAnnualTrendChart() {
+            const pol = document.getElementById('trendPollutantSelect').value;
+            const series = reportData.annual_trends[pol] || [];
+
+            const x = series.map(d => d.year);
+            const y = series.map(d => d.mean);
+
+            const conama = reportData.conama_standards[pol] || {};
+            const standard = conama.standard_annual || conama.standard_8h;
+
+            const traces = [{
+                x: x,
+                y: y,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: `Média Anual (${pol})`,
+                line: { color: '#1B4F72', width: 3 },
+                marker: { size: 8, color: '#2874A6' }
+            }];
+
+            const shapes = [];
+            if (standard) {
+                shapes.push({
+                    type: 'line',
+                    x0: x[0],
+                    x1: x[x.length - 1],
+                    y0: standard,
+                    y1: standard,
+                    line: { color: '#C0392B', width: 2, dash: 'dash' }
+                });
+            }
+
+            const layout = {
+                title: { text: `Tendência Anual da Média de ${pol} (${conama.unit || 'µg/m³'})`, font: { size: 15, family: 'Inter' } },
+                xaxis: { title: 'Ano', dtick: 1 },
+                yaxis: { title: `Concentração Média (${conama.unit || 'µg/m³'})` },
+                margin: { t: 40, b: 40, l: 50, r: 20 },
+                shapes: shapes,
+                showlegend: true,
+                legend: { orientation: 'h', y: -0.2 }
+            };
+
+            Plotly.newPlot('annualTrendPlot', traces, layout, { responsive: true });
+        }
+
+        function renderRegionalTrendChart() {
+            const pol = document.getElementById('trendPollutantSelect').value;
+            const traces = [];
+            const colors = ['#1B4F72', '#117864', '#E67E22', '#8E44AD'];
+
+            let colorIdx = 0;
+            for (const [region, polDict] of Object.entries(reportData.regional_trends)) {
+                const series = polDict[pol] || [];
+                if (series.length > 0) {
+                    traces.push({
+                        x: series.map(d => d.year),
+                        y: series.map(d => d.mean),
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: region,
+                        line: { color: colors[colorIdx % colors.length], width: 2.5 },
+                        marker: { size: 7 }
+                    });
+                    colorIdx++;
+                }
+            }
+
+            const layout = {
+                title: { text: `Evolução de ${pol} por Macrorregião do Estado de SP`, font: { size: 15, family: 'Inter' } },
+                xaxis: { title: 'Ano', dtick: 1 },
+                yaxis: { title: 'Concentração Média (µg/m³)' },
+                margin: { t: 40, b: 50, l: 50, r: 20 },
+                showlegend: true,
+                legend: { orientation: 'h', y: -0.25 }
+            };
+
+            Plotly.newPlot('regionalTrendPlot', traces, layout, { responsive: true });
+        }
+
+        function renderDiurnalChart() {
+            const traces = [];
+            
+            const hours = reportData.diurnal_cycle['NO2'].map(d => d.hour);
+            const no2_vals = reportData.diurnal_cycle['NO2'].map(d => d.mean);
+            const o3_vals = reportData.diurnal_cycle['O3'].map(d => d.mean);
+            const mp10_vals = reportData.diurnal_cycle['MP10'].map(d => d.mean);
+
+            traces.push({
+                x: hours,
+                y: no2_vals,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'NO₂ (Veicular / Trânsito)',
+                line: { color: '#C0392B', width: 3 }
+            });
+
+            traces.push({
+                x: hours,
+                y: o3_vals,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'O₃ (Fotoquímico / Solar)',
+                line: { color: '#F39C12', width: 3 }
+            });
+
+            traces.push({
+                x: hours,
+                y: mp10_vals,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'MP10 (Inalável)',
+                line: { color: '#1B4F72', width: 2.5, dash: 'dot' }
+            });
+
+            const layout = {
+                title: { text: 'Ciclo Diurno Horário (00h às 23h) — NO₂ vs O₃ vs MP10', font: { size: 14, family: 'Inter' } },
+                xaxis: { title: 'Hora do Dia' },
+                yaxis: { title: 'Concentração (µg/m³)' },
+                margin: { t: 40, b: 50, l: 50, r: 20 },
+                legend: { orientation: 'h', y: -0.25 }
+            };
+
+            Plotly.newPlot('diurnalPlot', traces, layout, { responsive: true });
+        }
+
+        function renderSeasonalChart() {
+            const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            const mp10_vals = reportData.seasonality['MP10'].map(d => d.mean);
+            const mp25_vals = reportData.seasonality['MP2.5'].map(d => d.mean);
+            const o3_vals = reportData.seasonality['O3'].map(d => d.mean);
+
+            const traces = [
+                {
+                    x: months,
+                    y: mp10_vals,
+                    name: 'MP10 (Inverno / Seca)',
+                    type: 'bar',
+                    marker: { color: '#2874A6' }
+                },
+                {
+                    x: months,
+                    y: mp25_vals,
+                    name: 'MP2.5 (Fino)',
+                    type: 'bar',
+                    marker: { color: '#117864' }
+                },
+                {
+                    x: months,
+                    y: o3_vals,
+                    name: 'Ozônio (O₃)',
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#E67E22', width: 3 },
+                    yaxis: 'y'
+                }
+            ];
+
+            const layout = {
+                title: { text: 'Sazonalidade Mensal — Efeito Inverno & Inversão Térmica', font: { size: 14, family: 'Inter' } },
+                xaxis: { title: 'Mês do Ano' },
+                yaxis: { title: 'Concentração Média (µg/m³)' },
+                barmode: 'group',
+                margin: { t: 40, b: 50, l: 50, r: 20 },
+                legend: { orientation: 'h', y: -0.25 }
+            };
+
+            Plotly.newPlot('seasonalPlot', traces, layout, { responsive: true });
+        }
+
+        function renderHotspotChart() {
+            const pol = document.getElementById('hotspotPollutantSelect').value;
+            const validStations = [];
+
+            reportData.stations.forEach(st => {
+                const sp = st.pollutants[pol];
+                if (sp && sp.count >= 2000) {
+                    validStations.push({
+                        name: st.nome,
+                        code: st.codigo,
+                        mean: sp.mean,
+                        std: sp.std,
+                        municipio: st.municipio
+                    });
+                }
+            });
+
+            validStations.sort((a, b) => b.mean - a.mean);
+            const top10 = validStations.slice(0, 10).reverse();
+
+            const trace = {
+                x: top10.map(d => d.mean),
+                y: top10.map(d => `${d.name} (${d.code})`),
+                type: 'bar',
+                orientation: 'h',
+                marker: {
+                    color: top10.map(d => d.mean),
+                    colorscale: 'Reds',
+                    reversescale: false
+                },
+                error_x: {
+                    type: 'data',
+                    array: top10.map(d => d.std),
+                    visible: true,
+                    color: '#2C3E50',
+                    thickness: 1.5
+                }
+            };
+
+            const conama = reportData.conama_standards[pol] || {};
+            const standard = conama.standard_annual || conama.standard_8h;
+            const shapes = [];
+            if (standard) {
+                shapes.push({
+                    type: 'line',
+                    x0: standard,
+                    x1: standard,
+                    y0: -0.5,
+                    y1: 9.5,
+                    line: { color: '#C0392B', width: 2, dash: 'dash' }
+                });
+            }
+
+            const layout = {
+                title: { text: `Top 10 Estações Mais Críticas: ${pol} (Média Histórica ± Desvio Padrão σ)`, font: { size: 14, family: 'Inter' } },
+                xaxis: { title: `Média Histórica (${conama.unit || 'µg/m³'})` },
+                margin: { t: 40, b: 40, l: 220, r: 20 },
+                shapes: shapes
+            };
+
+            Plotly.newPlot('hotspotPlot', [trace], layout, { responsive: true });
+        }
+
+        // Stations Data Table
+        function renderStationsTable() {
+            const tbody = document.getElementById('fullStationsTableBody');
+            const pol = document.getElementById('tablePolSelect').value;
+            tbody.innerHTML = '';
+
+            reportData.stations.forEach(st => {
+                const sp = st.pollutants[pol];
+                const meanVal = sp ? sp.mean.toFixed(2) : '-';
+                const stdVal = sp ? '± ' + sp.std.toFixed(2) : '-';
+                const maxVal = sp ? sp.max.toFixed(2) : '-';
+                const countVal = sp ? sp.count.toLocaleString('pt-BR') : '0';
+
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-ugrhi', st.ugrhi);
+                tr.setAttribute('data-type', st.tipo);
+
+                tr.innerHTML = `
+                    <td style="font-family: monospace; font-weight: 700;">${st.codigo}</td>
+                    <td><strong>${st.nome}</strong></td>
+                    <td>${st.municipio}</td>
+                    <td style="text-align: center;">${st.ugrhi}</td>
+                    <td><span class="badge-tag" style="background: #E2E8F0; color: var(--text-main);">${st.tipo}</span></td>
+                    <td style="font-family: monospace; font-weight: 700; color: var(--primary);">${meanVal}</td>
+                    <td style="font-family: monospace; font-weight: 600; color: #4A5568;">${stdVal}</td>
+                    <td style="font-family: monospace;">${maxVal}</td>
+                    <td style="font-family: monospace;">${countVal}</td>
+                    <td style="font-size: 0.78rem; font-family: monospace;">${st.lat ? st.lat.toFixed(5) : '-'}</td>
+                    <td style="font-size: 0.78rem; font-family: monospace;">${st.lon ? st.lon.toFixed(5) : '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            filterStationsTable();
+        }
+
+        function filterStationsTable() {
+            const search = document.getElementById('tableSearchInput').value.toLowerCase().trim();
+            const ugrhi = document.getElementById('tableUgrhiFilter').value;
+            const net = document.getElementById('tableTypeFilter').value;
+
+            const rows = document.querySelectorAll('#fullStationsTableBody tr');
+            rows.forEach(r => {
+                const text = r.innerText.toLowerCase();
+                const rUgrhi = r.getAttribute('data-ugrhi');
+                const rType = r.getAttribute('data-type');
+
+                let matchSearch = text.includes(search);
+                let matchUgrhi = (ugrhi === 'ALL') || (ugrhi === 'OTHER' ? !['2','3','5','6','7'].includes(rUgrhi) : rUgrhi === ugrhi);
+                let matchType = (net === 'ALL') || (rType.toLowerCase() === net.toLowerCase());
+
+                if (matchSearch && matchUgrhi && matchType) {
+                    r.style.display = '';
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+        }
+
+        // Table Sort function
+        let sortDir = {};
+        function sortTable(colIdx) {
+            const table = document.getElementById('fullStationsTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            sortDir[colIdx] = !sortDir[colIdx];
+            const dir = sortDir[colIdx] ? 1 : -1;
+
+            rows.sort((a, b) => {
+                let valA = a.cells[colIdx].innerText.replace('±', '').replace(/\./g, '').replace(',', '.').trim();
+                let valB = b.cells[colIdx].innerText.replace('±', '').replace(/\./g, '').replace(',', '.').trim();
+
+                let numA = parseFloat(valA);
+                let numB = parseFloat(valB);
+
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return (numA - numB) * dir;
+                }
+                return valA.localeCompare(valB) * dir;
+            });
+
+            rows.forEach(r => tbody.appendChild(r));
+        }
+
+        // Export to CSV function
+        function exportTableToCSV() {
+            const table = document.getElementById('fullStationsTable');
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].style.display === 'none') continue;
+                let row = [], cols = rows[i].querySelectorAll('td, th');
+                for (let j = 0; j < cols.length; j++) {
+                    let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/(\s\s+)/gm, ' ');
+                    data = data.replace(/"/g, '""');
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(';'));
+            }
+            const csvFile = new Blob(["\uFEFF" + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const downloadLink = document.createElement('a');
+            downloadLink.download = 'estacoes_qualidade_ar_cetesb.csv';
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.style.display = 'none';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+
+        // Initialization on Load
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSummaryTable();
+            initMap();
+            renderAnnualTrendChart();
+            renderRegionalTrendChart();
+            renderDiurnalChart();
+            renderSeasonalChart();
+            renderHotspotChart();
+            renderStationsTable();
+        });
+    </script>
+</body>
+</html>
